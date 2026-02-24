@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wfm-shared"
+version = "1.0.0"
+description = "Shared utilities for WiFi Marketing Content Toolkit"
+requires-python = ">=3.10"
+dependencies = [
+    "rich>=13.0",
+]
+
+[tool.setuptools]
+packages = ["shared"]
+
+[tool.setuptools.package-dir]
+shared = "."
+
+[project.scripts]
+wfm-setup = "shared.config:_setup_cli"

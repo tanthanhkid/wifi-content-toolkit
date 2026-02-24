@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wfm-vidmake"
+version = "1.0.0"
+description = "Video assembly module for WiFi Marketing Content Toolkit (via FFmpeg)"
+requires-python = ">=3.10"
+dependencies = [
+    "wfm-shared",
+    "click>=8.0",
+    "rich>=13.0",
+    "gradio>=5.0",
+]
+
+[tool.setuptools]
+packages = ["vidmake"]
+
+[tool.setuptools.package-dir]
+vidmake = "."
+[project.scripts]
+vidmake = "vidmake.cli:main"

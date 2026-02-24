@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wfm-poster"
+version = "0.1.0"
+description = "Poster and social media image generation for WFM Content Tool"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "wfm-shared",
+    "click>=8.0",
+    "rich>=13.0",
+    "gradio>=5.0",
+    "jinja2>=3.0",
+    "playwright>=1.40",
+]
+
+[tool.setuptools]
+packages = ["poster"]
+
+[tool.setuptools.package-dir]
+poster = "."
+
+[tool.setuptools.package-data]
+poster = ["templates/*.html"]
+[project.scripts]
+poster = "poster.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["poster"]

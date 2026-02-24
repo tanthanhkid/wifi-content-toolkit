@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1080" />
+<title>Before / After Poster</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary:  {{ brand_primary_color | default('#6C63FF') }};
+    --accent:   {{ brand_accent_color  | default('#FF6584') }};
+    --before-color: #FF4B4B;
+    --after-color:  #22C55E;
+    --w: 1080px;
+    --h: 1920px;
+  }
+
+  html, body {
+    width: var(--w);
+    height: var(--h);
+    overflow: hidden;
+    font-family: 'Be Vietnam Pro', sans-serif;
+    background: #0A0A14;
+  }
+
+  /* ── Full layout: header | two panels | footer ── */
+  .layout {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── header section ── */
+  .header {
+    background: #0A0A14;
+    position: relative;
+    padding: 80px 80px 60px;
+    flex-shrink: 0;
+    z-index: 10;
+  }
+
+  /* decorative horizontal gradient rule */
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 80px; right: 80px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--primary) 30%, var(--accent) 70%, transparent);
+  }
+
+  .header-eyebrow {
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--primary);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+
+  .header-title {
+    font-size: 64px;
+    font-weight: 900;
+    line-height: 1.1;
+    color: #FFFFFF;
+    letter-spacing: -1px;
+    margin-bottom: 24px;
+  }
+
+  .header-title em {
+    font-style: normal;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ── panels container ── */
+  .panels {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    position: relative;
+  }
+
+  /* centre split line + VS badge */
+  .split-line {
+    position: absolute;
+    top: 0; bottom: 0;
+    left: 50%;
+    width: 2px;
+    transform: translateX(-50%);
+    background: linear-gradient(180deg, transparent, rgba(255,255,255,0.15) 20%, rgba(255,255,255,0.15) 80%, transparent);
+    z-index: 20;
+  }
+
+  .vs-badge {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 30;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: #0A0A14;
+    border: 2px solid rgba(255,255,255,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    font-weight: 900;
+    color: rgba(255,255,255,0.6);
+    letter-spacing: 1px;
+  }
+
+  /* ── individual panel ── */
+  .panel {
+    padding: 60px 60px 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 36px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* before panel */
+  .panel-before {
+    background:
+      radial-gradient(ellipse 500px 400px at -10% 50%, color-mix(in srgb, var(--before-color) 18%, transparent), transparent 65%),
+      #100808;
+  }
+
+  /* after panel */
+  .panel-after {
+    background:
+      radial-gradient(ellipse 500px 400px at 110% 50%, color-mix(in srgb, var(--after-color) 18%, transparent), transparent 65%),
+      #08100A;
+  }
+
+  /* panel label pill */
+  .panel-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    border-radius: 999px;
+    padding: 14px 32px;
+    width: fit-content;
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .panel-before .panel-label {
+    background: color-mix(in srgb, var(--before-color) 20%, transparent);
+    border: 1.5px solid color-mix(in srgb, var(--before-color) 50%, transparent);
+    color: var(--before-color);
+  }
+
+  .panel-after .panel-label {
+    background: color-mix(in srgb, var(--after-color) 20%, transparent);
+    border: 1.5px solid color-mix(in srgb, var(--after-color) 50%, transparent);
+    color: var(--after-color);
+  }
+
+  .panel-label-icon {
+    font-size: 28px;
+  }
+
+  /* bullet list */
+  .bullet-list {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .bullet-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+  }
+
+  .bullet-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 900;
+  }
+
+  .panel-before .bullet-icon {
+    background: color-mix(in srgb, var(--before-color) 25%, transparent);
+    color: var(--before-color);
+  }
+
+  .panel-after .bullet-icon {
+    background: color-mix(in srgb, var(--after-color) 25%, transparent);
+    color: var(--after-color);
+  }
+
+  .bullet-text {
+    font-size: 33px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: rgba(255,255,255,0.88);
+  }
+
+  /* ── footer ── */
+  .footer {
+    flex-shrink: 0;
+    padding: 40px 80px;
+    background: #0A0A14;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .footer-brand {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .footer-tagline {
+    font-size: 24px;
+    color: rgba(255,255,255,0.35);
+    font-weight: 400;
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <div class="header">
+    <div class="header-eyebrow">So sánh kết quả</div>
+    <div class="header-title">
+      {% if headline %}
+        {{ headline | replace('vs', '<em>vs</em>') | safe }}
+      {% else %}
+        Sự khác biệt <em>rõ ràng</em>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="panels">
+    <div class="split-line"></div>
+    <div class="vs-badge">VS</div>
+
+    <!-- BEFORE panel -->
+    <div class="panel panel-before">
+      <div class="panel-label">
+        <span class="panel-label-icon">✕</span>
+        {{ before_title | default('Trước') }}
+      </div>
+      <div class="bullet-list">
+        {% if before_points %}
+          {% for point in before_points %}
+          <div class="bullet-item">
+            <div class="bullet-icon">✕</div>
+            <div class="bullet-text">{{ point }}</div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="bullet-item">
+            <div class="bullet-icon">✕</div>
+            <div class="bullet-text">Điểm yếu đầu tiên</div>
+          </div>
+          <div class="bullet-item">
+            <div class="bullet-icon">✕</div>
+            <div class="bullet-text">Điểm yếu thứ hai</div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- AFTER panel -->
+    <div class="panel panel-after">
+      <div class="panel-label">
+        <span class="panel-label-icon">✓</span>
+        {{ after_title | default('Sau') }}
+      </div>
+      <div class="bullet-list">
+        {% if after_points %}
+          {% for point in after_points %}
+          <div class="bullet-item">
+            <div class="bullet-icon">✓</div>
+            <div class="bullet-text">{{ point }}</div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="bullet-item">
+            <div class="bullet-icon">✓</div>
+            <div class="bullet-text">Kết quả tích cực đầu tiên</div>
+          </div>
+          <div class="bullet-item">
+            <div class="bullet-icon">✓</div>
+            <div class="bullet-text">Kết quả tích cực thứ hai</div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    {% if brand_name %}
+    <div class="footer-brand">{{ brand_name }}</div>
+    {% else %}
+    <div></div>
+    {% endif %}
+    <div class="footer-tagline">Kết quả thực tế từ khách hàng</div>
+  </div>
+</div>
+
+</body>
+</html>

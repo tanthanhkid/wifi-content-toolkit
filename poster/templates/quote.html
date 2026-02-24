@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1080" />
+<title>Quote Poster</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,600;0,700;0,800;0,900;1,400;1,600&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary:  {{ brand_primary_color | default('#6C63FF') }};
+    --accent:   {{ brand_accent_color  | default('#FF6584') }};
+    --w: 1080px;
+    --h: 1920px;
+  }
+
+  html, body {
+    width: var(--w);
+    height: var(--h);
+    overflow: hidden;
+    font-family: 'Be Vietnam Pro', sans-serif;
+  }
+
+  body {
+    background: #0D0D1A;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── layered background ── */
+  .bg-gradient {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 900px 700px at 15% 10%, color-mix(in srgb, var(--primary) 40%, transparent) 0%, transparent 70%),
+      radial-gradient(ellipse 700px 600px at 85% 90%, color-mix(in srgb, var(--accent) 35%, transparent) 0%, transparent 65%),
+      radial-gradient(ellipse 500px 500px at 50% 50%, color-mix(in srgb, var(--primary) 15%, transparent) 0%, transparent 60%),
+      #0D0D1A;
+  }
+
+  /* decorative grid */
+  .bg-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  /* glowing orbs */
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.25;
+  }
+  .orb-1 {
+    width: 500px; height: 500px;
+    top: -100px; left: -100px;
+    background: var(--primary);
+  }
+  .orb-2 {
+    width: 400px; height: 400px;
+    bottom: -80px; right: -80px;
+    background: var(--accent);
+  }
+  .orb-3 {
+    width: 300px; height: 300px;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: color-mix(in srgb, var(--primary) 60%, var(--accent));
+    opacity: 0.12;
+  }
+
+  /* ── content ── */
+  .content {
+    position: relative;
+    z-index: 10;
+    width: 880px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0;
+  }
+
+  /* decorative quote mark */
+  .quote-mark {
+    font-size: 280px;
+    line-height: 0.7;
+    font-weight: 900;
+    color: var(--primary);
+    opacity: 0.15;
+    font-family: Georgia, serif;
+    margin-bottom: -30px;
+    user-select: none;
+  }
+
+  /* top accent line */
+  .accent-line {
+    width: 80px;
+    height: 5px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    margin-bottom: 60px;
+  }
+
+  .headline {
+    font-size: 72px;
+    font-weight: 800;
+    line-height: 1.15;
+    color: #FFFFFF;
+    letter-spacing: -1px;
+    margin-bottom: 60px;
+    /* highlight every word wrapped in <em> via Jinja */
+  }
+
+  /* auto-highlight: first line gets accent colour */
+  .headline .highlight {
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .divider {
+    width: 120px;
+    height: 3px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    margin-bottom: 50px;
+  }
+
+  .subtext {
+    font-size: 38px;
+    font-weight: 400;
+    font-style: italic;
+    color: rgba(255,255,255,0.65);
+    letter-spacing: 0.3px;
+    line-height: 1.5;
+  }
+
+  /* ── brand footer ── */
+  .brand-footer {
+    position: absolute;
+    bottom: 80px;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .brand-footer-line {
+    width: 600px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  }
+
+  .brand-name {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* corner decorations */
+  .corner {
+    position: absolute;
+    z-index: 5;
+    width: 120px;
+    height: 120px;
+    opacity: 0.4;
+  }
+  .corner-tl {
+    top: 40px; left: 40px;
+    border-top: 3px solid var(--primary);
+    border-left: 3px solid var(--primary);
+    border-radius: 8px 0 0 0;
+  }
+  .corner-tr {
+    top: 40px; right: 40px;
+    border-top: 3px solid var(--accent);
+    border-right: 3px solid var(--accent);
+    border-radius: 0 8px 0 0;
+  }
+  .corner-bl {
+    bottom: 40px; left: 40px;
+    border-bottom: 3px solid var(--accent);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 0 0 8px;
+  }
+  .corner-br {
+    bottom: 40px; right: 40px;
+    border-bottom: 3px solid var(--primary);
+    border-right: 3px solid var(--primary);
+    border-radius: 0 0 8px 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-gradient"></div>
+<div class="bg-grid"></div>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<!-- corner decor -->
+<div class="corner corner-tl"></div>
+<div class="corner corner-tr"></div>
+<div class="corner corner-bl"></div>
+<div class="corner corner-br"></div>
+
+<div class="content">
+  <div class="quote-mark">"</div>
+  <div class="accent-line"></div>
+
+  <div class="headline">
+    {% if headline %}
+      {% set words = headline.split() %}
+      {% set half = (words|length // 2) %}
+      {% for word in words %}
+        {% if loop.index <= half %}
+          <span class="highlight">{{ word }}</span>
+        {% else %}
+          {{ word }}
+        {% endif %}
+        {{ ' ' if not loop.last else '' }}
+      {% endfor %}
+    {% else %}
+      <span class="highlight">Câu trích dẫn</span> truyền cảm hứng của bạn
+    {% endif %}
+  </div>
+
+  {% if subtext %}
+  <div class="divider"></div>
+  <div class="subtext">{{ subtext }}</div>
+  {% endif %}
+</div>
+
+{% if brand_name %}
+<div class="brand-footer">
+  <div class="brand-footer-line"></div>
+  <div class="brand-name">{{ brand_name }}</div>
+</div>
+{% endif %}
+
+</body>
+</html>
