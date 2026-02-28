@@ -158,7 +158,7 @@ _TEMPLATE_TO_PRESET: dict[str, str] = {
 
 # Default voice recommendations per language
 _DEFAULT_VOICES: dict[str, dict] = {
-    "vi": {"name": "Đôn Hùng (Vietnamese male)", "id": "LPldyaIkUUSOPCRFrgYJ"},
+    "vi": {"name": "Tuyết - Nữ miền Nam (Crisp, Professional)", "id": "xPEfmymXC4WdBxGMznS7"},
     "en": {"name": "Liam - Energetic, Social Media Creator", "id": "TX3LPaxmHKxFdv7VOQHJ"},
 }
 
