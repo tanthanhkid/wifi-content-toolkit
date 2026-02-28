@@ -427,3 +427,245 @@ def _parse_size(size: str) -> tuple[int, int]:
         return int(w), int(h)
     except Exception:
         return 1080, 1920
+
+
+# ---------------------------------------------------------------------------
+# Ken Burns animated slideshow
+# ---------------------------------------------------------------------------
+
+# Available Ken Burns animation effects
+ANIMATION_EFFECTS = [
+    "zoom_in",
+    "zoom_out",
+    "pan_right",
+    "pan_down",
+    "zoom_topleft",
+]
+
+
+def _build_zoompan_filter(effect: str, frames: int, size: str, fps: int) -> str:
+    """Return the zoompan filter string for the given Ken Burns effect."""
+    w, h = _parse_size(size)
+    base = f"d={frames}:s={w}x{h}:fps={fps}"
+
+    filters = {
+        "zoom_in": (
+            f"zoompan=z='min(zoom+0.003,1.5)'"
+            f":x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':{base}"
+        ),
+        "zoom_out": (
+            f"zoompan=z='if(lte(zoom,1.001),1.5,max(1.001,zoom-0.003))'"
+            f":x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':{base}"
+        ),
+        "pan_right": (
+            f"zoompan=z=1.3"
+            f":x='if(lte(on,1),0,min(x+2,iw-iw/zoom))'"
+            f":y='ih/2-(ih/zoom/2)':{base}"
+        ),
+        "pan_down": (
+            f"zoompan=z=1.2"
+            f":x='iw/2-(iw/zoom/2)'"
+            f":y='if(lte(on,1),0,min(y+1.5,ih-ih/zoom))':{base}"
+        ),
+        "zoom_topleft": (
+            f"zoompan=z='min(zoom+0.004,2.0)'"
+            f":x='iw*0.2':y='ih*0.15':{base}"
+        ),
+    }
+    return filters.get(effect, filters["zoom_in"])
+
+
+def _animate_single_slide(
+    image_path: str,
+    output_path: str,
+    effect: str,
+    duration: float,
+    size: str,
+    fps: int,
+    encoder: str,
+) -> dict[str, Any]:
+    """Apply a Ken Burns animation to a single image and produce an MP4 clip."""
+    frames = int(duration * fps)
+    zoompan = _build_zoompan_filter(effect, frames, size, fps)
+
+    # Add fade in/out
+    fade_in = "fade=t=in:st=0:d=0.5"
+    fade_out = f"fade=t=out:st={duration - 0.5:.1f}:d=0.5"
+    vf = f"{zoompan},{fade_in},{fade_out}"
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-loop", "1", "-i", image_path,
+        "-vf", vf,
+        "-t", str(duration),
+        "-c:v", encoder,
+        "-pix_fmt", "yuv420p",
+    ]
+
+    if encoder == "libx264":
+        cmd += ["-preset", "fast", "-crf", "23"]
+    elif encoder == "h264_videotoolbox":
+        cmd += ["-b:v", "4M"]
+    elif encoder == "h264_nvenc":
+        cmd += ["-preset", "fast", "-b:v", "4M"]
+
+    cmd.append(output_path)
+
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+    except subprocess.TimeoutExpired:
+        return {"success": False, "error": f"Timeout animating {image_path}"}
+    except FileNotFoundError:
+        return {"success": False, "error": "FFmpeg not found in PATH."}
+
+    if proc.returncode != 0:
+        return {
+            "success": False,
+            "error": f"FFmpeg error ({proc.returncode}): {(proc.stderr or '')[-500:]}",
+        }
+    return {"success": True, "output_path": output_path}
+
+
+def create_animated_slideshow(
+    images: list[str],
+    output_path: str,
+    effects: list[str] | None = None,
+    duration_per_slide: float = 5.0,
+    audio_path: str | None = None,
+    size: str = "1080x1920",
+    fps: int = 30,
+) -> dict[str, Any]:
+    """Create a video with Ken Burns animations applied per slide.
+
+    Parameters
+    ----------
+    images:
+        Ordered list of image file paths (PNG/JPG).
+    output_path:
+        Destination MP4 path.
+    effects:
+        Per-slide animation effect names. If None or shorter than images,
+        cycles through ANIMATION_EFFECTS.
+    duration_per_slide:
+        Seconds each slide is displayed.
+    audio_path:
+        Optional background music file.
+    size:
+        Output resolution as 'WxH'.
+    fps:
+        Frames per second.
+
+    Returns
+    -------
+    dict with success, output_path, duration_seconds, slide_count, encoder, error.
+    """
+    if not images:
+        return {"success": False, "error": "Danh sách ảnh không được để trống."}
+
+    missing = [p for p in images if not Path(p).exists()]
+    if missing:
+        return {"success": False, "error": f"File không tồn tại: {', '.join(missing[:5])}"}
+
+    if audio_path and not Path(audio_path).exists():
+        return {"success": False, "error": f"File âm thanh không tồn tại: {audio_path}"}
+
+    if not shutil.which("ffmpeg"):
+        return {"success": False, "error": "FFmpeg chưa được cài đặt."}
+
+    # Resolve effects list
+    if not effects:
+        effects = []
+    resolved_effects: list[str] = []
+    for i in range(len(images)):
+        if i < len(effects) and effects[i] in ANIMATION_EFFECTS:
+            resolved_effects.append(effects[i])
+        else:
+            resolved_effects.append(ANIMATION_EFFECTS[i % len(ANIMATION_EFFECTS)])
+
+    # Detect encoder
+    try:
+        from shared.platform import detect_ffmpeg_encoder
+        encoder = detect_ffmpeg_encoder()
+    except Exception:
+        encoder = "libx264"
+
+    out = Path(output_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    tmpdir = tempfile.mkdtemp(prefix="vidmake_anim_")
+    clip_paths: list[str] = []
+
+    try:
+        # Step 1: Animate each slide
+        for i, (img, effect) in enumerate(zip(images, resolved_effects)):
+            clip_path = str(Path(tmpdir) / f"clip_{i:03d}.mp4")
+            result = _animate_single_slide(
+                image_path=img,
+                output_path=clip_path,
+                effect=effect,
+                duration=duration_per_slide,
+                size=size,
+                fps=fps,
+                encoder=encoder,
+            )
+            if not result["success"]:
+                return result
+            clip_paths.append(clip_path)
+
+        # Step 2: Concat all clips
+        concat_list = Path(tmpdir) / "clips.txt"
+        with open(concat_list, "w") as f:
+            for cp in clip_paths:
+                f.write(f"file '{cp}'\n")
+
+        merged_path = str(Path(tmpdir) / "merged.mp4")
+        concat_cmd = [
+            "ffmpeg", "-y",
+            "-f", "concat", "-safe", "0",
+            "-i", str(concat_list),
+            "-c:v", "copy",
+            merged_path,
+        ]
+        proc = subprocess.run(concat_cmd, capture_output=True, text=True, timeout=300)
+        if proc.returncode != 0:
+            return {
+                "success": False,
+                "error": f"Lỗi ghép clips: {(proc.stderr or '')[-500:]}",
+            }
+
+        # Step 3: Add audio if provided
+        if audio_path:
+            final_cmd = [
+                "ffmpeg", "-y",
+                "-i", merged_path,
+                "-i", audio_path,
+                "-c:v", "copy", "-c:a", "aac", "-b:a", "128k",
+                "-shortest",
+                "-map", "0:v:0", "-map", "1:a:0",
+                "-movflags", "+faststart",
+                str(out),
+            ]
+            proc = subprocess.run(final_cmd, capture_output=True, text=True, timeout=120)
+            if proc.returncode != 0:
+                return {
+                    "success": False,
+                    "error": f"Lỗi thêm nhạc: {(proc.stderr or '')[-500:]}",
+                }
+        else:
+            import shutil as _shutil
+            _shutil.copy2(merged_path, str(out))
+
+    finally:
+        # Cleanup temp dir
+        import shutil as _shutil
+        _shutil.rmtree(tmpdir, ignore_errors=True)
+
+    total_duration = duration_per_slide * len(images)
+    return {
+        "success": True,
+        "output_path": str(out.resolve()),
+        "duration_seconds": round(total_duration, 2),
+        "slide_count": len(images),
+        "encoder": encoder,
+        "effects": resolved_effects,
+    }
