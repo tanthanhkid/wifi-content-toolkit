@@ -2,8 +2,8 @@
 
 ## What This Server Does
 
-Creates TikTok-style short videos from HTML slides with Ken Burns animations.
-The full pipeline: **HTML → Screenshot (Playwright) → Animate (FFmpeg) → Merge → Video MP4**.
+Creates TikTok-style short videos from HTML slides with Ken Burns animations **and AI voiceover**.
+The full pipeline: **HTML → Screenshot (Playwright) → Animate (FFmpeg) → Voiceover (ElevenLabs) → Merge → Video MP4**.
 
 All output files are saved to `~/vidmake-output/`.
 
@@ -19,7 +19,10 @@ Add to `.mcp.json` in project root (or `~/.claude/settings.json` for global):
     "vidmake": {
       "command": "/path/to/ContentTool/.venv/bin/python",
       "args": ["-m", "vidmake.mcp_server"],
-      "cwd": "/path/to/ContentTool"
+      "cwd": "/path/to/ContentTool",
+      "env": {
+        "ELEVENLABS_API_KEY": "your-api-key-here"
+      }
     }
   }
 }
@@ -27,11 +30,49 @@ Add to `.mcp.json` in project root (or `~/.claude/settings.json` for global):
 
 Restart Claude Code after adding.
 
-**Requirements:** FFmpeg installed, Playwright browsers installed (`playwright install chromium`).
+**Requirements:** FFmpeg installed, Playwright browsers installed (`playwright install chromium`), ElevenLabs API key (for voiceover).
 
 ---
 
-## Quick Start — 2 Tool Calls for a Complete Video
+## Quick Start — 3 Tool Calls for Video WITH Voiceover
+
+**Call 1:** `batch_slides` — creates all slide PNGs + animated MP4 clips.
+
+**Call 2:** `generate_slide_narrations` — generates context-aware voiceover for each slide.
+
+```json
+{
+  "scripts": [
+    {"text": "Hơn 200 tin nhắn mỗi ngày... bạn có trả lời kịp không?", "template": "hook"},
+    {"text": "AI Chatbot giúp bạn phản hồi tự động, tiết kiệm 70% chi phí.", "template": "features"},
+    {"text": "Liên hệ ngay để được tư vấn miễn phí!", "template": "cta"}
+  ],
+  "project_name": "demo",
+  "merge": true
+}
+```
+
+The voice tone **auto-matches** each slide type:
+- `hook` → **energetic** (excited, fast, attention-grabbing)
+- `features` → **informative** (clear, steady, professional)
+- `cta` → **persuasive** (urgent, confident, compelling)
+- `quote` → **warm** (friendly, authentic, slower)
+- `stats` → **authoritative** (commanding, impressive)
+- `comparison` → **dramatic** (intense, building tension)
+
+**Call 3:** `add_audio` — sync voiceover with video.
+
+```json
+{
+  "video_path": "~/vidmake-output/demo_final.mp4",
+  "audio_path": "~/vidmake-output/demo_voiceover.mp3",
+  "output_filename": "demo_with_voice.mp4"
+}
+```
+
+---
+
+## Quick Start — 2 Tool Calls (No Voiceover)
 
 **Call 1:** `batch_slides` — creates all slide PNGs + animated MP4 clips in one call.
 
@@ -93,7 +134,7 @@ screenshot_html × N → animate_image × N → merge_clips or merge_clips_cross
 
 ---
 
-## All 14 Tools — Reference
+## All 17 Tools — Reference
 
 ### BATCH (Primary Tool)
 
@@ -253,6 +294,72 @@ Resize, crop, or pad a video to a new resolution.
 | `mode` | `str` | `"pad"` | `"pad"` (letterbox), `"crop"` (fill+crop), `"stretch"` |
 | `output_filename` | `str` | `"resized.mp4"` | Output filename |
 | `bg_color` | `str` | `"black"` | Padding color for pad mode |
+
+---
+
+### VOICEOVER (ElevenLabs TTS)
+
+#### `generate_voiceover`
+
+Generate a single voiceover audio file from text. Voice tone auto-matches video context.
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `text` | `str` | required | Narration script. Use punctuation for pacing: "..." for pauses, "!" for emphasis |
+| `filename` | `str` | `"voiceover.mp3"` | Output filename |
+| `voice` | `str` | `""` | Voice ID or name. Empty = auto (Vietnamese) |
+| `preset` | `str` | `"neutral"` | Voice tone preset (see Voice Presets) |
+| `model` | `str` | `"eleven_v3"` | ElevenLabs model. v3 supports Vietnamese + 30 languages |
+| `speed` | `float\|null` | `null` | Speaking rate (0.7=slow, 1.0=normal, 1.3=fast). Null = use preset default |
+| `stability` | `float\|null` | `null` | Override stability (0=expressive, 1=monotone) |
+| `similarity_boost` | `float\|null` | `null` | Override voice similarity (0.0-1.0) |
+| `style` | `float\|null` | `null` | Override style exaggeration (0=neutral, 1=dramatic) |
+
+#### `generate_slide_narrations`
+
+Batch generate voiceover for all slides. Auto-detects tone per slide from template type.
+Merges into a single audio track with silence gaps (ready for `add_audio`).
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `scripts` | `list[dict]` | required | Per-slide narration (see Script Format below) |
+| `project_name` | `str` | `"video"` | Filename prefix |
+| `voice` | `str` | `""` | Voice ID. Empty = auto Vietnamese |
+| `model` | `str` | `"eleven_v3"` | ElevenLabs model |
+| `merge` | `bool` | `true` | Merge all narrations into single MP3 |
+| `silence_between` | `float` | `0.5` | Seconds of silence between slides |
+
+**Script Format** — each item in `scripts`:
+
+```
+Auto-detect:   {"text": "Narration script here"}
+With template:  {"text": "...", "template": "hook"}     ← auto-selects "energetic" preset
+With preset:    {"text": "...", "preset": "persuasive"}  ← explicit preset
+With speed:     {"text": "...", "template": "cta", "speed": 1.2}
+Silent slide:   {"text": ""}                             ← skipped in merge
+```
+
+**Returns:** Individual MP3 paths + merged audio path. Use merged audio with `add_audio`.
+
+#### `list_voices`
+
+List available ElevenLabs voices and voice presets.
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `language` | `str` | `""` | Filter by language code (e.g. "vi", "en") |
+
+#### Voice Presets
+
+| Preset | Stability | Style | Speed | Auto for Template | Description |
+|--------|-----------|-------|-------|-------------------|-------------|
+| `energetic` | 0.30 | 0.80 | 1.10 | hook | Excited, high energy, fast |
+| `informative` | 0.60 | 0.35 | 0.95 | features | Clear, professional, steady |
+| `persuasive` | 0.40 | 0.70 | 1.05 | cta | Urgent, confident, compelling |
+| `warm` | 0.65 | 0.55 | 0.90 | quote | Friendly, authentic, slower |
+| `authoritative` | 0.55 | 0.45 | 0.95 | stats | Commanding, impressive |
+| `dramatic` | 0.35 | 0.75 | 0.90 | comparison | Intense, building tension |
+| `neutral` | 0.50 | 0.45 | 1.00 | blank | Balanced, natural |
 
 ---
 
@@ -484,7 +591,64 @@ add_text_overlay(video_path="~/vidmake-output/with_music.mp4", text="ACME INC", 
 
 ---
 
-### Example 5: Reformat for Different Platforms
+### Example 5: Full Video with AI Voiceover (4 Calls)
+
+**Goal:** 5-slide marketing video with Vietnamese narration.
+
+**Call 1:** Create slides
+```
+batch_slides(
+  slides=[
+    {"template": "hook", "fields": {"title": "200+", "subtitle": "tin nhắn mỗi ngày", "highlight": "Trả lời kịp không?"}, "effect": "zoom_in"},
+    {"template": "features", "fields": {"title": "AI Chatbot", "icon1": "⚡", "card1_title": "24/7", "card1_desc": "Không cần nhân viên", "icon2": "💰", "card2_title": "Chỉ 200$/tháng", "card2_desc": "Tiết kiệm 70%", "icon3": "🧠", "card3_title": "AI Thông minh", "card3_desc": "Hiểu ngữ cảnh"}, "effect": "pan_down"},
+    {"template": "stats", "fields": {"title": "Kết quả thực tế", "stat1_value": "75%", "stat1_label": "Giảm chi phí", "stat2_value": "3x", "stat2_label": "Nhanh hơn", "stat3_value": "98%", "stat3_label": "Hài lòng"}, "effect": "zoom_out"},
+    {"template": "quote", "fields": {"quote_text": "Doanh thu tăng gấp 3 chỉ sau 2 tháng", "author": "Anh Minh", "role": "Giám đốc ABC Corp"}, "effect": "pan_right"},
+    {"template": "cta", "fields": {"title": "Sẵn sàng", "title_glow": "bứt phá?", "button_text": "Liên hệ MIỄN PHÍ", "subtitle": "Tư vấn trong 24h", "brand": "TRINITY"}, "effect": "zoom_in"}
+  ],
+  project_name="chatbot"
+)
+```
+
+**Call 2:** Generate voiceover with per-slide tone
+```
+generate_slide_narrations(
+  scripts=[
+    {"text": "Hơn 200 tin nhắn mỗi ngày... bạn có trả lời kịp không?", "template": "hook"},
+    {"text": "AI Chatbot phản hồi tự động 24/7, tiết kiệm đến 70% chi phí nhân sự.", "template": "features"},
+    {"text": "Giảm 75% chi phí. Nhanh gấp 3 lần. 98% khách hàng hài lòng!", "template": "stats"},
+    {"text": "Anh Minh, giám đốc ABC Corp chia sẻ: doanh thu tăng gấp 3 chỉ sau 2 tháng.", "template": "quote"},
+    {"text": "Liên hệ ngay hôm nay để được tư vấn miễn phí!", "template": "cta"}
+  ],
+  project_name="chatbot",
+  merge=true,
+  silence_between=0.3
+)
+```
+
+Voice tones auto-applied: hook→energetic, features→informative, stats→authoritative, quote→warm, cta→persuasive.
+
+**Call 3:** Merge video clips
+```
+merge_clips_crossfade(
+  clip_paths=["~/vidmake-output/chatbot_01.mp4", ..., "~/vidmake-output/chatbot_05.mp4"],
+  output_filename="chatbot_merged.mp4"
+)
+```
+
+**Call 4:** Add voiceover to video
+```
+add_audio(
+  video_path="~/vidmake-output/chatbot_merged.mp4",
+  audio_path="~/vidmake-output/chatbot_voiceover.mp3",
+  output_filename="chatbot_final.mp4"
+)
+```
+
+**Result:** Professional 25s video with context-aware Vietnamese narration.
+
+---
+
+### Example 6: Reformat for Different Platforms
 
 ```
 # TikTok (9:16) — already default
@@ -547,3 +711,11 @@ Use prompt: product_showcase(product_name="AI Chatbot Pro", features="24/7 repli
 9. **Audio volume 0.5-0.7** is good for background music under voiceover. Use 1.0 for music-only videos. Always add `fade_out_duration: 2.0` for a professional ending.
 
 10. **The `image` mode in batch_slides** is useful when the user provides their own screenshots or when you need to re-animate with different effects without re-screenshotting.
+
+11. **For voiceover, always include `"template"` in scripts** so the voice tone auto-matches the slide. Hook slides get excited delivery, quotes get warm reading, CTAs get urgent tone.
+
+12. **Keep narration scripts short** — 1-2 sentences per slide (10-25 words). Short sentences sound more natural and fit the 4-5s per slide timing.
+
+13. **Use `silence_between: 0.3`** for fast-paced TikTok content, `0.5-1.0` for more professional corporate videos.
+
+14. **Combine voiceover + background music:** Generate voiceover first, add it to video, then use `add_audio` again with background music at `audio_volume: 0.3` for subtle background.

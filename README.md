@@ -11,7 +11,8 @@ Everything runs from the terminal. No GUI apps needed.
 - **Video Pipeline** — Create TikTok-style videos from HTML slides with Ken Burns animations (zoom, pan, fade)
 - **7 Slide Templates** — hook, features, CTA, comparison, quote, stats, blank — just fill in text
 - **Gradio Web UI** — HTML editor with live preview, screenshot, animation config, video export
-- **MCP Server** — 14 tools for AI agents (Claude Code) to create videos programmatically
+- **AI Voiceover** — ElevenLabs TTS with context-aware voice (energetic hooks, warm quotes, urgent CTAs)
+- **MCP Server** — 17 tools for AI agents (Claude Code) to create videos with voiceover programmatically
 - **Poster Renderer** — HTML/Jinja2 templates → pixel-perfect PNG via Playwright
 - **Hardware Accelerated** — Auto-detects VideoToolbox (Mac), NVENC (Windows), libx264 fallback
 
@@ -89,7 +90,10 @@ Add to `.mcp.json` in project root:
     "vidmake": {
       "command": ".venv/bin/python",
       "args": ["-m", "vidmake.mcp_server"],
-      "cwd": "/path/to/wifi-content-toolkit"
+      "cwd": "/path/to/wifi-content-toolkit",
+      "env": {
+        "ELEVENLABS_API_KEY": "your-api-key-here"
+      }
     }
   }
 }
@@ -99,11 +103,11 @@ Add to `.mcp.json` in project root:
 
 Tell Claude Code:
 
-> "Create a 5-slide TikTok video about AI chatbots for customer service"
+> "Tạo video quảng cáo 30 giây cho sản phẩm AI Chatbot"
 
-Claude will call `batch_slides` + `merge_clips_crossfade` to produce a ready-to-post MP4.
+Claude will call `batch_slides` → `generate_slide_narrations` → `merge_clips_crossfade` → `add_audio` to produce a ready-to-post MP4 with Vietnamese voiceover.
 
-### Available Tools (14)
+### Available Tools (17)
 
 | Category | Tools |
 |----------|-------|
@@ -111,6 +115,7 @@ Claude will call `batch_slides` + `merge_clips_crossfade` to produce a ready-to-
 | **Template** | `create_slide` — template-based, no HTML needed |
 | **Atomic** | `screenshot_html`, `animate_image` — per-file control |
 | **Assembly** | `merge_clips`, `merge_clips_crossfade`, `add_audio` |
+| **Voiceover** | `generate_voiceover`, `generate_slide_narrations`, `list_voices` — ElevenLabs TTS |
 | **Post-processing** | `add_text_overlay`, `resize_video` |
 | **Utility** | `get_media_info`, `list_effects`, `list_templates`, `list_outputs`, `cleanup_outputs` |
 
@@ -127,6 +132,8 @@ Claude will call `batch_slides` + `merge_clips_crossfade` to produce a ready-to-
 | `blank` | Title + subtitle on gradient |
 
 Full MCP documentation: [`vidmake/VIDMAKE_MCP.md`](vidmake/VIDMAKE_MCP.md)
+
+Best practices for AI agents: [`vidmake/BEST_PRACTICES.md`](vidmake/BEST_PRACTICES.md)
 
 ## Video Pipeline (Manual)
 
@@ -145,9 +152,10 @@ See [`Pipeline_HTML_to_Video.md`](Pipeline_HTML_to_Video.md) for the full manual
 ├── vidmake/              # Video assembly + animations + MCP server
 │   ├── core.py           # create_slideshow(), create_animated_slideshow()
 │   ├── ui.py             # Gradio UI (Pipeline + Slideshow tabs)
-│   ├── mcp_server.py     # MCP server (14 tools, 7 templates, 2 prompts)
+│   ├── mcp_server.py     # MCP server (17 tools, 7 templates, 2 prompts)
 │   ├── cli.py            # CLI
-│   └── VIDMAKE_MCP.md    # AI agent documentation
+│   ├── VIDMAKE_MCP.md    # AI agent tool reference
+│   └── BEST_PRACTICES.md # Best practices for AI video creation
 ├── poster/               # HTML → PNG rendering
 │   ├── core.py           # Playwright screenshot engine
 │   ├── templates/        # Jinja2 HTML templates

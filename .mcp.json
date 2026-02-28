@@ -3,7 +3,10 @@
     "vidmake": {
       "command": "/Users/thanhtran/OFFLINE_FILES/Code/ContentTool/.venv/bin/python",
       "args": ["-m", "vidmake.mcp_server"],
-      "cwd": "/Users/thanhtran/OFFLINE_FILES/Code/ContentTool"
+      "cwd": "/Users/thanhtran/OFFLINE_FILES/Code/ContentTool",
+      "env": {
+        "ELEVENLABS_API_KEY": "sk_f56fd72ed53814f6ee2edd3befcd0adff76ff7a625fe96a0"
+      }
     }
   }
 }

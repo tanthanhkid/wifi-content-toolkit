@@ -1,5 +1,5 @@
 """
-mcp_server.py — Video Pipeline MCP Server (v2).
+mcp_server.py — Video Pipeline MCP Server (v3).
 
 Designed to minimize AI round-trips while keeping full customization.
 
@@ -22,12 +22,17 @@ Designed to minimize AI round-trips while keeping full customization.
     8. add_text_overlay     — Text/watermark onto video
     9. resize_video         — Resize/crop/pad
 
+  VOICEOVER (ElevenLabs TTS):
+   10. generate_voiceover   — Text → MP3 with context-aware voice
+   11. generate_slide_narrations — Batch: all slide scripts → MP3s + merged audio
+   12. list_voices          — Available ElevenLabs voices
+
   UTILITY:
-   10. get_media_info       — Probe file info
-   11. list_effects         — Available animation effects
-   12. list_templates       — Available slide templates
-   13. list_outputs         — Files in output dir
-   14. cleanup_outputs      — Delete output files
+   13. get_media_info       — Probe file info
+   14. list_effects         — Available animation effects
+   15. list_templates       — Available slide templates
+   16. list_outputs         — Files in output dir
+   17. cleanup_outputs      — Delete output files
 
 Run: python -m vidmake.mcp_server
 """
@@ -49,20 +54,17 @@ from mcp.server.fastmcp import FastMCP
 mcp = FastMCP(
     "vidmake",
     instructions=(
-        "Video Pipeline MCP Server — create TikTok-style videos with Ken Burns animations.\n\n"
-        "FASTEST workflow (2 tool calls for a full video):\n"
-        "  1. batch_slides — pass HTML for all slides at once → gets PNGs + animated clips\n"
-        "  2. merge_clips_crossfade — join clips into final video\n"
-        "  (optional) add_audio, add_text_overlay\n\n"
-        "TEMPLATE workflow (no HTML needed, 2 tool calls):\n"
-        "  1. create_slide × N — pass title/body/style, get PNGs automatically\n"
-        "  2. batch_slides — pass PNG paths to animate\n"
-        "  3. merge_clips_crossfade\n\n"
-        "CUSTOM workflow (full control per slide):\n"
-        "  1. screenshot_html per slide\n"
-        "  2. animate_image per slide (choose effect, duration)\n"
-        "  3. merge_clips or merge_clips_crossfade\n"
-        "  4. add_audio, add_text_overlay, resize_video\n\n"
+        "Video Pipeline MCP Server — create TikTok-style videos with Ken Burns animations + AI voiceover.\n\n"
+        "FASTEST workflow (3 tool calls for a full video WITH voiceover):\n"
+        "  1. batch_slides — pass HTML for all slides at once → PNGs + animated clips\n"
+        "  2. generate_slide_narrations — pass scripts for each slide → context-aware MP3\n"
+        "  3. merge_clips_crossfade → join clips, then add_audio with the voiceover\n\n"
+        "FASTEST workflow (2 tool calls, no voiceover):\n"
+        "  1. batch_slides → PNGs + animated clips\n"
+        "  2. merge_clips_crossfade → final video\n\n"
+        "VOICEOVER: generate_voiceover creates a single MP3 with voice tone/style\n"
+        "  matched to the video context (energetic for hooks, warm for quotes, etc.).\n"
+        "  generate_slide_narrations does batch TTS for all slides with per-slide context.\n\n"
         "All output → ~/vidmake-output/\n"
         "Effects: zoom_in, zoom_out, pan_right, pan_down, zoom_topleft"
     ),
@@ -76,6 +78,156 @@ OUTPUT_DIR = os.environ.get("VIDMAKE_OUTPUT_DIR", os.path.expanduser("~/vidmake-
 Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
 
 AVAILABLE_EFFECTS = ["zoom_in", "zoom_out", "pan_right", "pan_down", "zoom_topleft"]
+
+# ---------------------------------------------------------------------------
+# ElevenLabs TTS config
+# ---------------------------------------------------------------------------
+
+ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY", "")
+
+# Voice presets mapped to video context/mood.
+# Each preset tunes stability, similarity_boost, style, and speed to match
+# the emotional tone of the content.
+#
+# stability: 0=expressive/variable, 1=stable/monotone
+# similarity_boost: voice similarity fidelity
+# style: 0=neutral, 1=highly expressive (only for v2+ models)
+# speed: speaking rate multiplier (0.7=slow, 1.0=normal, 1.3=fast)
+_VOICE_PRESETS: dict[str, dict] = {
+    "energetic": {
+        "description": "High energy, excited — great for hooks, teasers, social media openers",
+        "stability": 0.30,
+        "similarity_boost": 0.75,
+        "style": 0.80,
+        "speed": 1.10,
+    },
+    "informative": {
+        "description": "Clear, professional — for features, explanations, tutorials",
+        "stability": 0.60,
+        "similarity_boost": 0.80,
+        "style": 0.35,
+        "speed": 0.95,
+    },
+    "persuasive": {
+        "description": "Urgent, confident — for CTAs, sales pitches, promotions",
+        "stability": 0.40,
+        "similarity_boost": 0.75,
+        "style": 0.70,
+        "speed": 1.05,
+    },
+    "warm": {
+        "description": "Friendly, authentic — for quotes, testimonials, stories",
+        "stability": 0.65,
+        "similarity_boost": 0.80,
+        "style": 0.55,
+        "speed": 0.90,
+    },
+    "authoritative": {
+        "description": "Commanding, impressive — for stats, data, achievements",
+        "stability": 0.55,
+        "similarity_boost": 0.80,
+        "style": 0.45,
+        "speed": 0.95,
+    },
+    "dramatic": {
+        "description": "Intense, building tension — for comparisons, before/after reveals",
+        "stability": 0.35,
+        "similarity_boost": 0.75,
+        "style": 0.75,
+        "speed": 0.90,
+    },
+    "neutral": {
+        "description": "Balanced, natural — default for any content",
+        "stability": 0.50,
+        "similarity_boost": 0.75,
+        "style": 0.45,
+        "speed": 1.00,
+    },
+}
+
+# Map slide template types to the best voice preset
+_TEMPLATE_TO_PRESET: dict[str, str] = {
+    "hook": "energetic",
+    "features": "informative",
+    "cta": "persuasive",
+    "comparison": "dramatic",
+    "quote": "warm",
+    "stats": "authoritative",
+    "blank": "neutral",
+}
+
+# Default voice recommendations per language
+_DEFAULT_VOICES: dict[str, dict] = {
+    "vi": {"name": "Đôn Hùng (Vietnamese male)", "id": "LPldyaIkUUSOPCRFrgYJ"},
+    "en": {"name": "Liam - Energetic, Social Media Creator", "id": "TX3LPaxmHKxFdv7VOQHJ"},
+}
+
+
+def _get_elevenlabs_client():
+    """Get ElevenLabs client, raising clear error if no API key."""
+    api_key = ELEVENLABS_API_KEY
+    if not api_key:
+        raise ValueError(
+            "ELEVENLABS_API_KEY not set. "
+            "Set it as environment variable or pass via MCP config."
+        )
+    from elevenlabs.client import ElevenLabs
+    return ElevenLabs(api_key=api_key)
+
+
+def _get_voice_settings(preset_name: str, overrides: dict | None = None) -> dict:
+    """Build voice settings from preset + optional overrides."""
+    preset = _VOICE_PRESETS.get(preset_name, _VOICE_PRESETS["neutral"])
+    settings = {
+        "stability": preset["stability"],
+        "similarity_boost": preset["similarity_boost"],
+        "style": preset["style"],
+    }
+    if overrides:
+        settings.update({k: v for k, v in overrides.items() if k in settings})
+    return settings
+
+
+def _tts_generate(
+    text: str,
+    voice_id: str,
+    output_path: str,
+    preset: str = "neutral",
+    model_id: str = "eleven_v3",
+    speed: float | None = None,
+    voice_overrides: dict | None = None,
+) -> dict:
+    """Core TTS generation. Returns {"success": bool, "path": str, "error": str}."""
+    try:
+        client = _get_elevenlabs_client()
+        from elevenlabs import VoiceSettings
+
+        settings = _get_voice_settings(preset, voice_overrides)
+        preset_data = _VOICE_PRESETS.get(preset, _VOICE_PRESETS["neutral"])
+        actual_speed = speed if speed is not None else preset_data.get("speed", 1.0)
+
+        audio = client.text_to_speech.convert(
+            text=text,
+            voice_id=voice_id,
+            model_id=model_id,
+            voice_settings=VoiceSettings(
+                stability=settings["stability"],
+                similarity_boost=settings["similarity_boost"],
+                style=settings["style"],
+                use_speaker_boost=True,
+                speed=actual_speed,
+            ),
+            output_format="mp3_44100_128",
+        )
+
+        with open(output_path, "wb") as f:
+            for chunk in audio:
+                f.write(chunk)
+
+        return {"success": True, "path": output_path}
+    except Exception as exc:
+        return {"success": False, "path": output_path, "error": str(exc)}
+
 
 # ---------------------------------------------------------------------------
 # Slide templates
@@ -827,6 +979,304 @@ def resize_video(
 
 
 # ===========================================================================
+# VOICEOVER — ElevenLabs TTS with context-aware voice
+# ===========================================================================
+
+@mcp.tool()
+def generate_voiceover(
+    text: str,
+    filename: str = "voiceover.mp3",
+    voice: str = "",
+    preset: str = "neutral",
+    model: str = "eleven_v3",
+    speed: float | None = None,
+    stability: float | None = None,
+    similarity_boost: float | None = None,
+    style: float | None = None,
+) -> str:
+    """Generate voiceover audio from text using ElevenLabs TTS.
+
+    The voice tone and delivery automatically match the video context via presets.
+    Supports Vietnamese and 30+ languages with eleven_v3 model.
+
+    Args:
+        text: The narration script. Use natural punctuation for pacing:
+              - Periods and commas create natural pauses
+              - "..." creates longer pauses
+              - "!" adds emphasis
+              - Keep sentences short for better delivery
+        filename: Output MP3 filename.
+        voice: Voice ID or name. Leave empty for auto-select.
+               Use list_voices to see available voices.
+        preset: Voice tone preset. Determines delivery style:
+                - "energetic" — hooks, teasers, openers (fast, excited)
+                - "informative" — features, tutorials (clear, steady)
+                - "persuasive" — CTAs, sales (urgent, confident)
+                - "warm" — quotes, testimonials (friendly, slow)
+                - "authoritative" — stats, data (commanding)
+                - "dramatic" — comparisons, reveals (intense, building)
+                - "neutral" — default balanced delivery
+        model: ElevenLabs model. "eleven_v3" supports Vietnamese + 30 languages.
+               "eleven_flash_v2_5" for faster generation.
+        speed: Speaking rate override (0.7=slow, 1.0=normal, 1.3=fast).
+               If None, uses preset's default speed.
+        stability: Override voice stability (0.0-1.0). Lower = more expressive.
+        similarity_boost: Override similarity boost (0.0-1.0).
+        style: Override style exaggeration (0.0-1.0). Higher = more dramatic.
+
+    Returns:
+        Path to generated MP3, duration, and preset used.
+    """
+    if not text.strip():
+        return "Error: Text cannot be empty."
+
+    # Resolve voice
+    voice_id = voice
+    if not voice_id:
+        voice_id = _DEFAULT_VOICES["vi"]["id"]
+    elif len(voice_id) < 15:
+        # Might be a name — search
+        try:
+            client = _get_elevenlabs_client()
+            voices = client.voices.get_all()
+            for v in voices.voices:
+                if voice_id.lower() in v.name.lower():
+                    voice_id = v.voice_id
+                    break
+        except Exception:
+            pass
+
+    # Build overrides
+    overrides = {}
+    if stability is not None:
+        overrides["stability"] = stability
+    if similarity_boost is not None:
+        overrides["similarity_boost"] = similarity_boost
+    if style is not None:
+        overrides["style"] = style
+
+    out_path = _out(filename)
+    result = _tts_generate(
+        text=text,
+        voice_id=voice_id,
+        output_path=out_path,
+        preset=preset,
+        model_id=model,
+        speed=speed,
+        voice_overrides=overrides if overrides else None,
+    )
+
+    if not result["success"]:
+        return f"Error: {result['error']}"
+
+    # Get duration
+    info = _probe(out_path)
+    duration = info.get("duration", "?")
+    preset_desc = _VOICE_PRESETS.get(preset, {}).get("description", preset)
+    return (
+        f"{out_path} ({_file_info(out_path)}, {duration}s)\n"
+        f"Preset: {preset} — {preset_desc}\n"
+        f"Characters: {len(text)}"
+    )
+
+
+@mcp.tool()
+def generate_slide_narrations(
+    scripts: list[dict],
+    project_name: str = "video",
+    voice: str = "",
+    model: str = "eleven_v3",
+    merge: bool = True,
+    silence_between: float = 0.5,
+) -> str:
+    """Generate voiceover for multiple slides in one call. Auto-detects voice tone per slide.
+
+    Each script can specify its own preset or let it auto-detect from template type.
+    Optionally merges all narrations into a single audio track with configurable
+    silence gaps between slides (perfect for syncing with video).
+
+    Args:
+        scripts: List of narration dicts, one per slide:
+                 - {"text": "narration script"} — auto-detect preset
+                 - {"text": "...", "preset": "energetic"} — explicit preset
+                 - {"text": "...", "template": "hook"} — detect from template type
+                 - {"text": "...", "speed": 1.2} — override speed for this slide
+                 Slides with empty text are skipped (silent slides).
+        project_name: Prefix for output files.
+        voice: Voice ID. Leave empty for auto-select Vietnamese voice.
+        model: ElevenLabs model ID.
+        merge: If True, concatenate all narrations into a single MP3 with silence gaps.
+        silence_between: Seconds of silence between slide narrations (for merged output).
+
+    Returns:
+        Paths to individual MP3s + merged audio (if merge=True).
+        Use the merged audio with add_audio to sync with video.
+    """
+    if not scripts:
+        return "Error: No scripts provided."
+
+    # Resolve voice once
+    voice_id = voice
+    if not voice_id:
+        voice_id = _DEFAULT_VOICES["vi"]["id"]
+    elif len(voice_id) < 15:
+        try:
+            client = _get_elevenlabs_client()
+            voices = client.voices.get_all()
+            for v in voices.voices:
+                if voice_id.lower() in v.name.lower():
+                    voice_id = v.voice_id
+                    break
+        except Exception:
+            pass
+
+    results: list[str] = []
+    mp3_paths: list[str] = []
+    total_chars = 0
+
+    for i, script in enumerate(scripts):
+        idx = f"{i+1:02d}"
+        text = script.get("text", "").strip()
+
+        if not text:
+            results.append(f"  Slide {idx}: (silent — no narration)")
+            mp3_paths.append("")  # placeholder for merge
+            continue
+
+        # Determine preset
+        preset = script.get("preset", "")
+        if not preset:
+            template_type = script.get("template", "")
+            preset = _TEMPLATE_TO_PRESET.get(template_type, "neutral")
+
+        speed = script.get("speed")
+        mp3_path = _out(f"{project_name}_narration_{idx}.mp3")
+
+        result = _tts_generate(
+            text=text,
+            voice_id=voice_id,
+            output_path=mp3_path,
+            preset=preset,
+            model_id=model,
+            speed=speed,
+        )
+
+        if result["success"]:
+            info = _probe(mp3_path)
+            duration = info.get("duration", "?")
+            results.append(f"  Slide {idx}: {preset} — {duration}s ({len(text)} chars)")
+            mp3_paths.append(mp3_path)
+            total_chars += len(text)
+        else:
+            results.append(f"  Slide {idx}: ERROR — {result['error']}")
+            mp3_paths.append("")
+
+    # Merge all narrations into single audio track
+    merged_path = ""
+    if merge and any(mp3_paths):
+        merged_path = _out(f"{project_name}_voiceover.mp3")
+        valid_paths = [p for p in mp3_paths if p]
+
+        if len(valid_paths) == 1:
+            import shutil
+            shutil.copy2(valid_paths[0], merged_path)
+        elif len(valid_paths) > 1:
+            # Use FFmpeg to concat with silence gaps
+            filter_parts = []
+            inputs_cmd = []
+            for j, p in enumerate(valid_paths):
+                inputs_cmd += ["-i", p]
+                filter_parts.append(f"[{j}:a]aresample=44100[a{j}]")
+
+            # Build concat with silence between
+            concat_parts = []
+            for j in range(len(valid_paths)):
+                concat_parts.append(f"[a{j}]")
+                if j < len(valid_paths) - 1:
+                    # Generate silence
+                    silence_label = f"[s{j}]"
+                    filter_parts.append(
+                        f"aevalsrc=0:d={silence_between}:s=44100:c=mono{silence_label}"
+                    )
+                    concat_parts.append(silence_label)
+
+            n_streams = len(valid_paths) + (len(valid_paths) - 1)  # audio + silences
+            filter_parts.append(
+                f"{''.join(concat_parts)}concat=n={n_streams}:v=0:a=1[aout]"
+            )
+
+            cmd = ["ffmpeg", "-y"] + inputs_cmd + [
+                "-filter_complex", ";".join(filter_parts),
+                "-map", "[aout]", "-c:a", "libmp3lame", "-b:a", "128k",
+                merged_path,
+            ]
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            if proc.returncode != 0:
+                results.append(f"\n  Merge ERROR: {(proc.stderr or '')[-300:]}")
+                merged_path = ""
+
+    # Summary
+    output = f"Narrations: {len([p for p in mp3_paths if p])}/{len(scripts)} slides\n"
+    output += f"Total characters: {total_chars}\n\n"
+    output += "Details:\n" + "\n".join(results)
+
+    if merged_path and Path(merged_path).exists():
+        info = _probe(merged_path)
+        output += (
+            f"\n\nMerged voiceover: {merged_path}\n"
+            f"  Duration: {info.get('duration', '?')}s, {_file_info(merged_path)}\n"
+            f"  → Use with add_audio to sync with video"
+        )
+
+    individual = [p for p in mp3_paths if p]
+    if individual:
+        output += "\n\nIndividual files:\n" + "\n".join(f"  {p}" for p in individual)
+
+    return output
+
+
+@mcp.tool()
+def list_voices(language: str = "") -> str:
+    """List available ElevenLabs voices and voice presets.
+
+    Args:
+        language: Filter by language (e.g. "vi", "en"). Empty = show all.
+
+    Returns:
+        Available voices + voice presets for context-aware delivery.
+    """
+    lines = ["=== Voice Presets (context-aware delivery) ===\n"]
+    for name, preset in _VOICE_PRESETS.items():
+        template_matches = [t for t, p in _TEMPLATE_TO_PRESET.items() if p == name]
+        match_str = f" (auto for: {', '.join(template_matches)})" if template_matches else ""
+        lines.append(f"  {name}: {preset['description']}{match_str}")
+        lines.append(f"    stability={preset['stability']}, style={preset['style']}, speed={preset['speed']}")
+
+    lines.append("\n=== Available Voices ===\n")
+    try:
+        client = _get_elevenlabs_client()
+        voices = client.voices.get_all()
+        for v in voices.voices:
+            labels = v.labels or {}
+            lang = labels.get("language", "")
+            if language and lang and language.lower() not in lang.lower():
+                continue
+            accent = labels.get("accent", "")
+            use_case = labels.get("use_case", "")
+            lines.append(f"  {v.voice_id} | {v.name}")
+            if lang or accent or use_case:
+                details = ", ".join(filter(None, [lang, accent, use_case]))
+                lines.append(f"    {details}")
+    except Exception as exc:
+        lines.append(f"  Error fetching voices: {exc}")
+        lines.append("  Set ELEVENLABS_API_KEY environment variable.")
+
+    lines.append(f"\nDefault Vietnamese voice: {_DEFAULT_VOICES['vi']['name']}")
+    lines.append(f"Default English voice: {_DEFAULT_VOICES['en']['name']}")
+    return "\n".join(lines)
+
+
+# ===========================================================================
 # UTILITY
 # ===========================================================================
 
@@ -922,39 +1372,55 @@ def cleanup_outputs(pattern: str = "*") -> str:
 
 @mcp.prompt()
 def tiktok_video(topic: str, num_slides: int = 5) -> str:
-    """Generate a TikTok marketing video for a given topic.
+    """Generate a TikTok marketing video with voiceover for a given topic.
 
-    Creates a structured prompt that guides the AI to use batch_slides
-    and merge_clips_crossfade for efficient video creation.
+    Creates a structured prompt that guides the AI to use batch_slides,
+    generate_slide_narrations, and merge_clips_crossfade for efficient
+    video creation with context-aware voiceover.
     """
     return (
-        f"Create a {num_slides}-slide TikTok video about: {topic}\n\n"
+        f"Create a {num_slides}-slide TikTok video with voiceover about: {topic}\n\n"
         f"Use the vidmake MCP tools:\n"
         f"1. Call batch_slides with {num_slides} slides using templates:\n"
         f"   - Slide 1: 'hook' template (attention-grabbing stat)\n"
         f"   - Slides 2-{num_slides-1}: 'features', 'comparison', 'stats', or 'quote'\n"
-        f"   - Slide {num_slides}: 'cta' template (call to action)\n"
-        f"2. Call merge_clips_crossfade with the clip paths from step 1\n"
-        f"3. (Optional) Call add_text_overlay for branding\n\n"
+        f"   - Slide {num_slides}: 'cta' template (call to action)\n\n"
+        f"2. Call generate_slide_narrations with a narration script for each slide:\n"
+        f"   - Each script should be 1-2 short sentences (10-20 words)\n"
+        f"   - Match the slide content but add verbal context\n"
+        f"   - Include 'template' field so voice tone auto-matches:\n"
+        f'     {{"text": "Con số không tưởng!", "template": "hook"}}\n'
+        f'     {{"text": "Hãy liên hệ ngay hôm nay!", "template": "cta"}}\n'
+        f"   - Voice presets auto-apply: hook→energetic, features→informative,\n"
+        f"     cta→persuasive, quote→warm, stats→authoritative\n\n"
+        f"3. Call merge_clips_crossfade with the clip paths from step 1\n\n"
+        f"4. Call add_audio to sync the merged voiceover with the final video\n\n"
         f"Style: dark gradient background, bold colors, large text for mobile.\n"
         f"Duration: 5s per slide, 0.5s crossfade.\n"
-        f"Resolution: 1080x1920 (TikTok portrait 9:16)."
+        f"Resolution: 1080x1920 (TikTok portrait 9:16).\n"
+        f"Language: Vietnamese narration for Vietnamese audience."
     )
 
 
 @mcp.prompt()
 def product_showcase(product_name: str, features: str) -> str:
-    """Create a product showcase video."""
+    """Create a product showcase video with voiceover."""
     return (
-        f"Create a product showcase video for: {product_name}\n"
+        f"Create a product showcase video with voiceover for: {product_name}\n"
         f"Features: {features}\n\n"
         f"Use batch_slides with:\n"
         f"  Slide 1: 'hook' — teaser with a bold claim\n"
         f"  Slide 2: 'features' — top 3 features with icons\n"
         f"  Slide 3: 'stats' — key metrics/numbers\n"
         f"  Slide 4: 'quote' — testimonial\n"
-        f"  Slide 5: 'cta' — call to action\n"
-        f"Then merge_clips_crossfade + add_text_overlay for brand watermark."
+        f"  Slide 5: 'cta' — call to action\n\n"
+        f"Then generate_slide_narrations with Vietnamese scripts for each slide:\n"
+        f"  - Hook: Excited, attention-grabbing opening line\n"
+        f"  - Features: Clear explanation of each benefit\n"
+        f"  - Stats: Impressive numbers with emphasis\n"
+        f"  - Quote: Warm, authentic testimonial reading\n"
+        f"  - CTA: Urgent, persuasive call to action\n\n"
+        f"Finally: merge_clips_crossfade → add_audio with voiceover → add_text_overlay for brand."
     )
 
 

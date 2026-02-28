@@ -12,6 +12,7 @@ dependencies = [
     "click>=8.0",
     "rich>=13.0",
     "gradio>=5.0",
+    "elevenlabs>=2.0",
 ]
 
 [tool.setuptools]
