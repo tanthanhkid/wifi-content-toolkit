@@ -160,13 +160,13 @@ screenshot_html × N → animate_image × N → merge_clips_crossfade → mix_vo
 
 ---
 
-## All 20 Tools — Reference
+## All 21 Tools — Reference
 
 ### BATCH (Primary Tool)
 
 #### `batch_slides`
 
-Process multiple slides in one call. Screenshots HTML/templates to PNG, then applies Ken Burns animation to each, producing ready-to-merge MP4 clips.
+Process multiple slides in one call. Screenshots HTML/templates to PNG, then applies Ken Burns animation to each, producing ready-to-merge MP4 clips. Also supports CSS animation recording via `"animated": true` flag.
 
 **Parameters:**
 
@@ -182,15 +182,19 @@ Process multiple slides in one call. Screenshots HTML/templates to PNG, then app
 **Slide Format** — each item in `slides` is a dict with ONE of these structures:
 
 ```
-Template mode:  {"template": "hook", "fields": {"title": "...", ...}, "effect": "zoom_in"}
-HTML mode:      {"html": "<full html>", "effect": "pan_down"}
-Image mode:     {"image": "/absolute/path.png", "effect": "zoom_out"}
+Template mode:      {"template": "hook", "fields": {"title": "...", ...}, "effect": "zoom_in"}
+HTML mode:          {"html": "<full html>", "effect": "pan_down"}
+Image mode:         {"image": "/absolute/path.png", "effect": "zoom_out"}
+CSS animated mode:  {"html": "<html with @keyframes>", "animated": true}
+CSS animated+dur:   {"html": "...", "animated": true, "duration": 6.0}
 ```
 
 - `template` — use a built-in template (see Templates section). `fields` is required.
 - `html` — raw HTML string. You write the full `<!DOCTYPE html>` document.
 - `image` — skip screenshot, animate an existing PNG/JPG file.
-- `effect` — optional. If omitted, auto-cycles through all 5 effects.
+- `effect` — optional Ken Burns effect. If omitted, auto-cycles through all 5 effects. Ignored when `animated` is true.
+- `animated` — when `true`, records the browser playing CSS animations via Playwright video recording instead of screenshot + Ken Burns. Use for text animations: fadeIn, slideUp, bounce, typewriter, stagger.
+- `duration` — optional per-slide duration override (seconds). Works for both animated and Ken Burns slides.
 
 **Style overrides** (applies to templates only):
 
@@ -251,6 +255,21 @@ Apply a single Ken Burns animation to one image, producing an MP4 clip.
 | `output_filename` | `str` | `"clip.mp4"` | Output filename |
 | `size` | `str` | `"1080x1920"` | Resolution |
 | `fps` | `int` | `30` | Frames per second |
+
+#### `record_html_video`
+
+Record HTML with CSS `@keyframes` animations → MP4 via Playwright video recording. Instead of screenshotting a static image, this records the browser playing CSS animations in real-time. Use for CapCut/PowerPoint-style text animations.
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `html_content` | `str` | required | Full HTML document with CSS @keyframes animations |
+| `filename` | `str` | `"animated.mp4"` | Output filename |
+| `width` | `int` | `1080` | Viewport width |
+| `height` | `int` | `1920` | Viewport height |
+| `duration` | `float` | `5.0` | Recording duration (must cover all animations) |
+| `fps` | `int` | `30` | Frames per second |
+
+**Note:** For batch processing, use `batch_slides` with `"animated": true` instead. This tool is for single-slide recording.
 
 ---
 

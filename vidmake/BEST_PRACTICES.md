@@ -31,7 +31,11 @@ User request received
   │
   ├─ Text-only marketing content (product/service)?
   │   ├─ Quick draft → Built-in templates (Workflow B)
-  │   └─ Production quality → Custom HTML (Workflow A)
+  │   ├─ Production quality, static → Custom HTML (Workflow A)
+  │   └─ Animated text (fly-in, bounce, typewriter) → CSS animations (Workflow C)
+  │
+  ├─ "CapCut/PowerPoint-style text animations"
+  │   └─ CSS animations with "animated": true (Workflow C)
   │
   ├─ "Tạo poster / ảnh quảng cáo"
   │   └─ Custom HTML → screenshot_html (1 call)
@@ -179,6 +183,238 @@ Templates: `hook`, `features`, `cta`, `comparison`, `quote`, `stats`, `blank`.
 
 ---
 
+## Workflow C: CSS Animation Recording (CapCut-style Text Animations)
+
+**Best for text animations: fadeIn, slideUp, bounce, typewriter, stagger.**
+
+Instead of Ken Burns (zoom/pan on a static image), this records the browser playing CSS `@keyframes` animations in real-time via Playwright video recording.
+
+```
+WORKFLOW A (Ken Burns):  HTML → screenshot (PNG) → FFmpeg zoompan → MP4
+WORKFLOW C (CSS anim):   HTML + @keyframes → Playwright record video → MP4
+```
+
+### When to Use Which
+
+| Content | Workflow | Why |
+|---------|----------|-----|
+| Image/screenshot showcase | A (Ken Burns) | Zoom/pan makes static images feel alive |
+| Text flying in, bouncing | C (CSS anim) | Ken Burns can't animate individual elements |
+| Typewriter effect | C (CSS anim) | Requires per-character animation |
+| Numbers counting up | C (CSS anim) | Requires JS + CSS animation |
+| Static text on gradient bg | A (Ken Burns) | Simple, fast, looks professional |
+| Mixed (some animated, some static) | A + C | Use `"animated": true` per slide |
+
+### How to Use
+
+**Option 1: `batch_slides` with `"animated": true` (recommended)**
+
+```python
+batch_slides(
+    slides=[
+        # Static slide → Ken Burns zoom
+        {"html": "<html>...</html>", "effect": "zoom_in"},
+        # Animated slide → CSS animation recording
+        {"html": "<html with @keyframes>...</html>", "animated": True},
+        # Animated with custom duration
+        {"html": "...", "animated": True, "duration": 6.0},
+    ],
+    project_name="mixed_video",
+)
+```
+
+**Option 2: `record_html_video` (single slide)**
+
+```python
+record_html_video(
+    html_content="<html with CSS animations>...",
+    filename="animated_slide.mp4",
+    duration=5.0,
+)
+```
+
+### CSS Animation Timing Rules
+
+- Total animation timeline ≤ slide duration (4-6s)
+- Reserve **0.5s at start** before first element appears (enter delay)
+- Reserve **0.3s at end** so last element is visible before cut
+- Use `animation-fill-mode: both` on ALL animated elements
+- Stagger formula: `animation-delay: calc(0.3s + INDEX × 0.4s)`
+- Smooth easing: `cubic-bezier(0.25, 0.46, 0.45, 0.94)`
+
+### Timing Blueprint (5s slide)
+
+```
+0.0s ─────── 0.5s ─────── 1.0s ─────── 2.0s ─────── 3.5s ─────── 4.7s ─── 5.0s
+│  dark bg    │  title     │  element 1  │  element 2  │  element 3  │  hold │
+│  (wait)     │  fadeIn    │  slideUp    │  slideUp    │  slideUp    │       │
+```
+
+### CSS Animation Pattern Library
+
+**1. fadeIn** — opacity 0→1
+
+```css
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.fade { animation: fadeIn 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
+```
+
+**2. slideUp** — translate from below
+
+```css
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(60px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.slide-up { animation: slideUp 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
+```
+
+**3. slideInLeft** — translate from left
+
+```css
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-80px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.slide-left { animation: slideInLeft 0.7s ease-out both; }
+```
+
+**4. scaleBounce** — scale 0→1.1→1 (great for numbers/stats)
+
+```css
+@keyframes scaleBounce {
+  0% { opacity: 0; transform: scale(0); }
+  60% { opacity: 1; transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+.bounce { animation: scaleBounce 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+```
+
+**5. typewriter** — characters appear one by one
+
+```css
+@keyframes typewriter {
+  from { width: 0; }
+  to { width: 100%; }
+}
+.typewriter {
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 3px solid #6C63FF;
+  animation: typewriter 2s steps(20) both, blink 0.5s step-end infinite alternate;
+}
+@keyframes blink { 50% { border-color: transparent; } }
+```
+
+**6. stagger** — list items appear one by one
+
+```css
+.stagger-item {
+  animation: slideUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+.stagger-item:nth-child(1) { animation-delay: 0.3s; }
+.stagger-item:nth-child(2) { animation-delay: 0.7s; }
+.stagger-item:nth-child(3) { animation-delay: 1.1s; }
+.stagger-item:nth-child(4) { animation-delay: 1.5s; }
+```
+
+**7. glowPulse** — text glow effect
+
+```css
+@keyframes glowPulse {
+  0%, 100% { text-shadow: 0 0 20px rgba(108, 99, 255, 0.5); }
+  50% { text-shadow: 0 0 40px rgba(108, 99, 255, 0.9), 0 0 80px rgba(108, 99, 255, 0.4); }
+}
+.glow {
+  animation: fadeIn 0.5s ease both, glowPulse 2s ease-in-out 0.5s infinite;
+}
+```
+
+**8. counter** — JS number count-up (requires `<script>`)
+
+```html
+<div class="counter" data-target="200">0</div>
+<script>
+document.querySelectorAll('.counter').forEach(el => {
+  const target = +el.dataset.target;
+  const duration = 2000;
+  const start = performance.now();
+  (function tick(now) {
+    const progress = Math.min((now - start) / duration, 1);
+    el.textContent = Math.floor(progress * target);
+    if (progress < 1) requestAnimationFrame(tick);
+  })(start);
+});
+</script>
+```
+
+### Full Animated Slide Example — Hook with Stagger
+
+```html
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 1080px; height: 1920px;
+  background: linear-gradient(135deg, #0a0a2e, #1a1a4e, #0d0d3a);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  font-family: 'Segoe UI', sans-serif; color: #fff;
+  padding: 80px; text-align: center;
+}
+@keyframes fadeIn {
+  from { opacity: 0; } to { opacity: 1; }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(60px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes scaleBounce {
+  0% { opacity: 0; transform: scale(0); }
+  60% { opacity: 1; transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+.badge {
+  background: rgba(255,101,132,0.2); border: 2px solid #FF6584;
+  border-radius: 50px; padding: 15px 40px; font-size: 28px;
+  color: #FF6584; letter-spacing: 2px;
+  animation: fadeIn 0.5s ease both;
+  animation-delay: 0.3s;
+}
+.big {
+  font-size: 140px; font-weight: 900; margin: 30px 0;
+  background: linear-gradient(90deg, #FF6584, #FF8E53);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  animation: scaleBounce 0.8s cubic-bezier(0.34,1.56,0.64,1) both;
+  animation-delay: 0.8s;
+}
+h2 {
+  font-size: 48px; font-weight: 300; line-height: 1.4;
+  animation: slideUp 0.7s cubic-bezier(0.25,0.46,0.45,0.94) both;
+  animation-delay: 1.4s;
+}
+.hl {
+  color: #6C63FF; -webkit-text-fill-color: #6C63FF; font-weight: 700;
+  animation: slideUp 0.7s cubic-bezier(0.25,0.46,0.45,0.94) both;
+  animation-delay: 1.8s;
+}
+</style></head>
+<body>
+  <div class="badge">THỐNG KÊ 2026</div>
+  <div class="big">200+</div>
+  <h2>tin nhắn mỗi ngày</h2>
+  <div class="hl">Bạn trả lời kịp không?</div>
+</body></html>
+```
+
+Use with: `{"html": "...", "animated": true, "duration": 5.0}`
+
+---
+
 ## Writing Narration Scripts
 
 ### Rules
@@ -246,8 +482,11 @@ Starter plan: 40,000 chars/month ≈ 80-130 videos.
 | Contrast/comparison | `zoom_out` | Shows full picture |
 | Technical diagram | `zoom_in` | Focus on detail |
 | Closing CTA | `zoom_in` | Creates urgency |
+| Text flying in/bouncing | `animated: true` | CSS animations (no Ken Burns) |
+| Numbers counting up | `animated: true` | JS + CSS counter animation |
+| Typewriter effect | `animated: true` | Per-character CSS animation |
 
-**Rule:** Never use the same effect for consecutive slides.
+**Rule:** Never use the same effect for consecutive slides. Mix Ken Burns and CSS animated slides for variety.
 
 ---
 
@@ -323,6 +562,9 @@ mix_voiceover_music(
 | Quick template video | 4 | batch_slides (template mode) → generate_slide_narrations → merge_clips_crossfade → add_audio |
 | Video only (no voice) | 2 | batch_slides → merge_clips_crossfade |
 | **Video + voice + music** | **4** | **batch_slides → generate_slide_narrations → merge_clips_crossfade → mix_voiceover_music** |
+| **CSS animated video** | **4** | **batch_slides (animated: true) → generate_slide_narrations → merge_clips_crossfade → mix_voiceover_music** |
+| Mixed (animated + static) | 4 | batch_slides (mixed animated flags) → narrations → merge → audio |
+| Single animated slide | 1 | record_html_video |
 | Video + facecam | +1 | ...add_audio/mix_voiceover_music → **add_facecam** (overlay talking head, auto-loop) |
 | Single poster | 1 | screenshot_html or create_slide |
 | Resize for IG | 1 | resize_video (mode="crop", size="1080x1080") |
@@ -390,7 +632,9 @@ Then pass the `file` path to `mix_voiceover_music(music_path=...)`.
 
 - [ ] Each slide has unique visual design (no repeated layout)
 - [ ] Images/screenshots zoomed in for portrait readability
-- [ ] Effects vary across slides
+- [ ] Effects vary across slides (mix Ken Burns + CSS animations for variety)
+- [ ] Animated slides use `animation-fill-mode: both` on all elements
+- [ ] Animated slide timing fits within duration (reserve 0.5s start + 0.3s end)
 - [ ] Narration 10-25 words per slide, conversational tone
 - [ ] Voice preset matches content mood (not forced to template name)
 - [ ] If voice + music: used `mix_voiceover_music` (auto-ducking), not 2x `add_audio`

@@ -5,6 +5,7 @@ Designed to minimize AI round-trips while keeping full customization.
 
   BATCH (1 tool call = multiple slides):
     1. batch_slides        — HTML[] → PNG[] → MP4 clips[] (screenshot + animate in one call)
+                             Supports "animated": true for CSS animation recording
 
   TEMPLATE (zero HTML needed):
     2. create_slide         — Template-based slide: just pass title/body/style → PNG
@@ -12,32 +13,33 @@ Designed to minimize AI round-trips while keeping full customization.
   ATOMIC (per-file control):
     3. screenshot_html      — HTML → PNG
     4. animate_image        — PNG → MP4 clip (Ken Burns)
+    5. record_html_video    — HTML + CSS animations → MP4 (Playwright video recording)
 
   ASSEMBLY:
-    5. merge_clips          — Concat clips → MP4
-    6. merge_clips_crossfade— Concat with crossfade
-    7. add_audio            — Video + music → MP4
+    6. merge_clips          — Concat clips → MP4
+    7. merge_clips_crossfade— Concat with crossfade
+    8. add_audio            — Video + music → MP4
 
   AUDIO MIXING:
-    8. mix_voiceover_music  — Video + voice + music with auto-ducking (sidechaincompress)
-    9. list_music           — List available background music tracks
+    9. mix_voiceover_music  — Video + voice + music with auto-ducking (sidechaincompress)
+   10. list_music           — List available background music tracks
 
   POST-PROCESSING:
-   10. add_text_overlay     — Text/watermark onto video
-   11. resize_video         — Resize/crop/pad
-   12. add_facecam          — Overlay facecam with rounded corners (auto-loop)
+   11. add_text_overlay     — Text/watermark onto video
+   12. resize_video         — Resize/crop/pad
+   13. add_facecam          — Overlay facecam with rounded corners (auto-loop)
 
   VOICEOVER (ElevenLabs TTS):
-   13. generate_voiceover   — Text → MP3 with context-aware voice
-   14. generate_slide_narrations — Batch: all slide scripts → MP3s + merged audio
-   15. list_voices          — Available ElevenLabs voices
+   14. generate_voiceover   — Text → MP3 with context-aware voice
+   15. generate_slide_narrations — Batch: all slide scripts → MP3s + merged audio
+   16. list_voices          — Available ElevenLabs voices
 
   UTILITY:
-   16. get_media_info       — Probe file info
-   17. list_effects         — Available animation effects
-   18. list_templates       — Available slide templates
-   19. list_outputs         — Files in output dir
-   20. cleanup_outputs      — Delete output files
+   17. get_media_info       — Probe file info
+   18. list_effects         — Available animation effects
+   19. list_templates       — Available slide templates
+   20. list_outputs         — Files in output dir
+   21. cleanup_outputs      — Delete output files
 
 Run: python -m vidmake.mcp_server
 """
@@ -61,7 +63,7 @@ mcp = FastMCP(
     instructions=(
         "Video Pipeline MCP Server — create TikTok-style videos with Ken Burns animations + AI voiceover.\n\n"
         "FASTEST workflow (4 tool calls for video + voice + music with auto-ducking):\n"
-        "  1. batch_slides — PNGs + animated clips\n"
+        "  1. batch_slides — PNGs + animated clips (Ken Burns or CSS animation recording)\n"
         "  2. generate_slide_narrations — context-aware voiceover MP3\n"
         "  3. merge_clips_crossfade — join clips (no audio)\n"
         "  4. mix_voiceover_music — voice + music with auto-ducking in one step\n\n"
@@ -69,6 +71,9 @@ mcp = FastMCP(
         "  1. batch_slides → PNGs + animated clips\n"
         "  2. generate_slide_narrations → voiceover MP3\n"
         "  3. merge_clips_crossfade → join clips, then add_audio with voiceover\n\n"
+        "CSS ANIMATIONS: Use {\"html\": \"<html with @keyframes>\", \"animated\": true}\n"
+        "  in batch_slides for CapCut-style text animations (fadeIn, slideUp, bounce, etc.).\n"
+        "  Or use record_html_video for single animated slides.\n\n"
         "SMART AUDIO: mix_voiceover_music combines voice + background music with\n"
         "  automatic ducking — music ducks when voice speaks, rises during transitions.\n"
         "  Use list_music to browse available background tracks.\n\n"
@@ -492,12 +497,18 @@ def batch_slides(
     This is the most efficient tool. One call produces all clips ready for merging.
 
     Each slide dict can be EITHER:
-      - {"html": "<full html>"} — custom HTML content
+      - {"html": "<full html>"} — custom HTML content (Ken Burns animation)
       - {"html": "<full html>", "effect": "zoom_in"} — custom HTML + specific effect
+      - {"html": "<full html>", "animated": true} — CSS animation recording (text flies in, fades, bounces)
+      - {"html": "<full html>", "animated": true, "duration": 6.0} — animated + custom duration
       - {"template": "hook", "fields": {"title": "200+", ...}} — use built-in template
       - {"template": "hook", "fields": {...}, "effect": "pan_down"} — template + specific effect
       - {"image": "/path/to/existing.png"} — skip screenshot, just animate existing image
       - {"image": "/path/to/existing.png", "effect": "zoom_out"} — existing image + effect
+
+    When "animated" is true, the HTML is rendered in a browser with Playwright video
+    recording, capturing CSS @keyframes animations directly. No Ken Burns effect is applied.
+    Use this for CapCut/PowerPoint-style text animations: fadeIn, slideUp, bounce, typewriter, etc.
 
     Args:
         slides: List of slide dicts. See above for format.
@@ -513,7 +524,7 @@ def batch_slides(
         Summary with paths to all PNGs and MP4 clips, ready for merge_clips or merge_clips_crossfade.
     """
     from poster.core import screenshot_sync
-    from vidmake.core import _animate_single_slide
+    from vidmake.core import _animate_single_slide, record_html_video
 
     if not slides:
         return "Error: No slides provided."
@@ -534,6 +545,41 @@ def batch_slides(
         idx = f"{i+1:02d}"
         png_path = _out(f"{project_name}_{idx}.png")
         mp4_path = _out(f"{project_name}_{idx}.mp4")
+
+        # --- CSS Animation path: record browser video directly ---
+        if slide.get("animated"):
+            # Get HTML content
+            if "html" in slide:
+                html = slide["html"]
+            elif "template" in slide:
+                template_id = slide["template"]
+                if template_id not in _TEMPLATES:
+                    results.append(f"  Slide {idx}: ERROR - unknown template '{template_id}'")
+                    continue
+                fields = slide.get("fields", {})
+                html = _render_template(template_id, fields, style)
+            else:
+                results.append(f"  Slide {idx}: ERROR - animated slide needs 'html' or 'template'")
+                continue
+
+            slide_duration = slide.get("duration", duration_per_slide)
+            result = record_html_video(
+                html_content=html,
+                output_path=mp4_path,
+                width=w_int,
+                height=h_int,
+                duration=slide_duration,
+                fps=fps,
+                encoder=encoder,
+            )
+            if result["success"]:
+                results.append(f"  Slide {idx}: CSS animated → {slide_duration}s → {_file_info(mp4_path)}")
+                clip_paths.append(mp4_path)
+            else:
+                results.append(f"  Slide {idx}: animated ERROR - {result['error']}")
+            continue
+
+        # --- Static path: screenshot → Ken Burns ---
 
         # Determine effect
         effect = slide.get("effect", AVAILABLE_EFFECTS[i % len(AVAILABLE_EFFECTS)])
@@ -574,10 +620,11 @@ def batch_slides(
 
         png_paths.append(png_path)
 
-        # Step B: Animate
+        # Step B: Animate (Ken Burns)
+        slide_duration = slide.get("duration", duration_per_slide)
         result = _animate_single_slide(
             image_path=png_path, output_path=mp4_path, effect=effect,
-            duration=duration_per_slide, size=size, fps=fps, encoder=encoder,
+            duration=slide_duration, size=size, fps=fps, encoder=encoder,
         )
         if result["success"]:
             results.append(f"           → {effect} → {_file_info(mp4_path)}")
@@ -711,6 +758,52 @@ def animate_image(
     )
     if result["success"]:
         return f"{out_path} ({_file_info(out_path)}, {duration}s, {effect})"
+    return f"Error: {result['error']}"
+
+
+@mcp.tool()
+def record_html_video(
+    html_content: str,
+    filename: str = "animated.mp4",
+    width: int = 1080,
+    height: int = 1920,
+    duration: float = 5.0,
+    fps: int = 30,
+) -> str:
+    """Record HTML with CSS animations → MP4 via Playwright video recording.
+
+    Instead of screenshotting a static image, this records the browser playing
+    CSS @keyframes animations in real-time. Use for CapCut/PowerPoint-style
+    text animations: fadeIn, slideUp, bounce, typewriter, stagger, etc.
+
+    For static slides (no CSS animation), use screenshot_html + animate_image instead.
+
+    Args:
+        html_content: Full HTML document with CSS @keyframes animations.
+            Must include animation-fill-mode: both on all animated elements.
+        filename: Output MP4 filename. Saved to output directory.
+        width: Viewport width. Default 1080.
+        height: Viewport height. Default 1920.
+        duration: Recording duration in seconds. Must cover all animations. Default 5.0.
+        fps: Frames per second. Default 30.
+
+    Returns:
+        Path and info.
+    """
+    from vidmake.core import record_html_video as _record
+
+    out_path = _out(filename)
+    result = _record(
+        html_content=html_content,
+        output_path=out_path,
+        width=width,
+        height=height,
+        duration=duration,
+        fps=fps,
+        encoder=_detect_encoder(),
+    )
+    if result["success"]:
+        return f"{out_path} ({_file_info(out_path)}, {duration}s, CSS animated)"
     return f"Error: {result['error']}"
 
 

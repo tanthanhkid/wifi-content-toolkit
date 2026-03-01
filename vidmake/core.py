@@ -818,6 +818,163 @@ def mix_audio_with_ducking(
     }
 
 
+def record_html_video(
+    html_content: str,
+    output_path: str,
+    width: int = 1080,
+    height: int = 1920,
+    duration: float = 5.0,
+    fps: int = 30,
+    encoder: str | None = None,
+) -> dict[str, Any]:
+    """Record a browser playing CSS animations → MP4 video.
+
+    Instead of screenshotting a static PNG, this uses Playwright's video
+    recording to capture CSS @keyframes animations running in the browser,
+    then re-encodes the WebM to MP4 via FFmpeg.
+
+    Parameters
+    ----------
+    html_content:
+        Full HTML document with CSS animations (@keyframes).
+    output_path:
+        Destination path for the output MP4 file.
+    width:
+        Viewport width (default 1080).
+    height:
+        Viewport height (default 1920).
+    duration:
+        How long to record in seconds (default 5.0).
+    fps:
+        Target frames per second (default 30).
+    encoder:
+        H.264 encoder. Auto-detected if None.
+
+    Returns
+    -------
+    dict with ``success``, ``output_path``, ``duration``, ``error`` (on failure).
+    """
+    if not html_content or not html_content.strip():
+        return {"success": False, "error": "HTML content không được để trống."}
+    if not shutil.which("ffmpeg"):
+        return {"success": False, "error": "FFmpeg chưa được cài đặt."}
+
+    import asyncio
+
+    coro = _record_html_video_async(
+        html_content, output_path, width, height, duration, fps, encoder,
+    )
+    try:
+        asyncio.get_running_loop()
+        # Inside an async event loop (MCP server) — offload to thread
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(asyncio.run, coro).result()
+    except RuntimeError:
+        # No running loop — safe to use asyncio.run directly
+        return asyncio.run(coro)
+
+
+async def _record_html_video_async(
+    html_content: str,
+    output_path: str,
+    width: int,
+    height: int,
+    duration: float,
+    fps: int,
+    encoder: str | None,
+) -> dict[str, Any]:
+    """Async implementation: Playwright video recording → FFmpeg re-encode."""
+    from playwright.async_api import async_playwright
+
+    if encoder is None:
+        try:
+            from shared.platform import detect_ffmpeg_encoder
+            encoder = detect_ffmpeg_encoder()
+        except Exception:
+            encoder = "libx264"
+
+    out = Path(output_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    tmpdir = tempfile.mkdtemp(prefix="vidmake_record_")
+    webm_path = None
+
+    try:
+        import os as _os
+
+        # Write HTML to temp file so local file:// references work
+        html_file = Path(tmpdir) / "page.html"
+        html_file.write_text(html_content, encoding="utf-8")
+
+        async with async_playwright() as p:
+            browser = await p.chromium.launch()
+            context = await browser.new_context(
+                viewport={"width": width, "height": height},
+                record_video_dir=tmpdir,
+                record_video_size={"width": width, "height": height},
+            )
+            page = await context.new_page()
+
+            await page.goto(
+                f"file://{html_file}", wait_until="networkidle",
+            )
+
+            # Let CSS animations play for the specified duration
+            await page.wait_for_timeout(int(duration * 1000))
+
+            # Close page + context to finalize the video file
+            webm_path = await page.video.path()
+            await page.close()
+            await context.close()
+            await browser.close()
+
+        if not webm_path or not Path(webm_path).exists():
+            return {"success": False, "error": "Playwright không tạo được file video."}
+
+        # Re-encode WebM → MP4 (h264, yuv420p)
+        bitrate = "6M"
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", str(webm_path),
+            "-c:v", encoder,
+            "-pix_fmt", "yuv420p",
+            "-r", str(fps),
+            "-t", str(duration),
+        ]
+
+        if encoder == "libx264":
+            cmd += ["-preset", "fast", "-crf", "20"]
+        elif encoder == "h264_videotoolbox":
+            cmd += ["-b:v", bitrate]
+        elif encoder == "h264_nvenc":
+            cmd += ["-preset", "fast", "-b:v", bitrate]
+
+        cmd += ["-movflags", "+faststart", "-an", str(out)]
+
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+
+        if proc.returncode != 0:
+            stderr_snippet = (proc.stderr or "")[-500:]
+            return {
+                "success": False,
+                "error": f"FFmpeg re-encode lỗi ({proc.returncode}):\n{stderr_snippet}",
+            }
+
+        return {
+            "success": True,
+            "output_path": str(out.resolve()),
+            "duration": duration,
+        }
+
+    except Exception as exc:
+        return {"success": False, "error": f"Lỗi khi quay video: {exc}"}
+
+    finally:
+        import shutil as _shutil
+        _shutil.rmtree(tmpdir, ignore_errors=True)
+
+
 def create_animated_slideshow(
     images: list[str],
     output_path: str,

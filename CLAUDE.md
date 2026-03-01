@@ -10,11 +10,11 @@
 ContentTool/
 ├── vidmake/              # Video assembly + Ken Burns animation + MCP server
 │   ├── core.py           # Business logic: create_slideshow(), create_animated_slideshow(),
-│   │                     #   add_facecam_overlay(), mix_audio_with_ducking()
+│   │                     #   add_facecam_overlay(), mix_audio_with_ducking(), record_html_video()
 │   ├── ui.py             # Gradio web UI (2 tabs: Pipeline + Slideshow)
-│   ├── mcp_server.py     # MCP server (20 tools) for AI-driven video creation
+│   ├── mcp_server.py     # MCP server (21 tools) for AI-driven video creation
 │   ├── cli.py            # CLI interface
-│   ├── VIDMAKE_MCP.md    # Full MCP tool reference (all 20 tools, all params)
+│   ├── VIDMAKE_MCP.md    # Full MCP tool reference (all 21 tools, all params)
 │   └── BEST_PRACTICES.md # Best practices for using MCP effectively
 ├── poster/               # HTML template → PNG rendering
 │   ├── core.py           # Playwright screenshot: screenshot_sync(), render_poster()
@@ -43,12 +43,12 @@ ContentTool/
 
 ## MCP Server — How to Create Videos
 
-The `vidmake` MCP server exposes **20 tools** for video creation. Read these docs in order:
+The `vidmake` MCP server exposes **21 tools** for video creation. Read these docs in order:
 
 1. **`vidmake/BEST_PRACTICES.md`** — Start here. Design philosophy, workflows, script writing rules.
 2. **`vidmake/VIDMAKE_MCP.md`** — Full tool reference with all parameters and examples.
 
-### All 20 Tools at a Glance
+### All 21 Tools at a Glance
 
 | # | Category | Tool | Description |
 |---|----------|------|-------------|
@@ -56,22 +56,23 @@ The `vidmake` MCP server exposes **20 tools** for video creation. Read these doc
 | 2 | Template | `create_slide` | Template → PNG (no HTML needed) |
 | 3 | Atomic | `screenshot_html` | HTML → PNG |
 | 4 | Atomic | `animate_image` | PNG → MP4 clip (Ken Burns) |
-| 5 | Assembly | `merge_clips` | Concat clips → MP4 |
-| 6 | Assembly | `merge_clips_crossfade` | Concat with crossfade transitions |
-| 7 | Assembly | `add_audio` | Video + single audio → MP4 |
-| 8 | Audio Mix | `mix_voiceover_music` | Video + voice + music with auto-ducking |
-| 9 | Audio Mix | `list_music` | Browse 31 background music tracks |
-| 10 | Post | `add_text_overlay` | Text/watermark onto video |
-| 11 | Post | `resize_video` | Resize/crop/pad |
-| 12 | Post | `add_facecam` | Overlay facecam with rounded corners, auto-loop |
-| 13 | Voiceover | `generate_voiceover` | Text → MP3 (context-aware voice) |
-| 14 | Voiceover | `generate_slide_narrations` | Batch TTS for all slides → merged MP3 |
-| 15 | Voiceover | `list_voices` | Available ElevenLabs voices |
-| 16 | Utility | `get_media_info` | Probe file info (duration, resolution, codec) |
-| 17 | Utility | `list_effects` | 5 Ken Burns animation effects |
-| 18 | Utility | `list_templates` | 7 built-in slide templates |
-| 19 | Utility | `list_outputs` | Files in output dir |
-| 20 | Utility | `cleanup_outputs` | Delete output files by pattern |
+| 5 | Atomic | `record_html_video` | HTML + CSS animations → MP4 (Playwright recording) |
+| 6 | Assembly | `merge_clips` | Concat clips → MP4 |
+| 7 | Assembly | `merge_clips_crossfade` | Concat with crossfade transitions |
+| 8 | Assembly | `add_audio` | Video + single audio → MP4 |
+| 9 | Audio Mix | `mix_voiceover_music` | Video + voice + music with auto-ducking |
+| 10 | Audio Mix | `list_music` | Browse 31 background music tracks |
+| 11 | Post | `add_text_overlay` | Text/watermark onto video |
+| 12 | Post | `resize_video` | Resize/crop/pad |
+| 13 | Post | `add_facecam` | Overlay facecam with rounded corners, auto-loop |
+| 14 | Voiceover | `generate_voiceover` | Text → MP3 (context-aware voice) |
+| 15 | Voiceover | `generate_slide_narrations` | Batch TTS for all slides → merged MP3 |
+| 16 | Voiceover | `list_voices` | Available ElevenLabs voices |
+| 17 | Utility | `get_media_info` | Probe file info (duration, resolution, codec) |
+| 18 | Utility | `list_effects` | 5 Ken Burns animation effects |
+| 19 | Utility | `list_templates` | 7 built-in slide templates |
+| 20 | Utility | `list_outputs` | Files in output dir |
+| 21 | Utility | `cleanup_outputs` | Delete output files by pattern |
 
 ### Design Philosophy: Flexible, Not Fixed
 
@@ -82,7 +83,7 @@ Built-in templates (`hook`, `features`, `cta`, etc.) are for **quick prototyping
 ### Standard Workflow (4 tool calls)
 
 ```
-1. batch_slides              → Animate slides with Ken Burns effects
+1. batch_slides              → Animate slides (Ken Burns or CSS animations)
 2. generate_slide_narrations → Vietnamese voiceover with per-slide voice preset
 3. merge_clips_crossfade     → Merged video (no audio)
 4. mix_voiceover_music       → Voice + music with auto-ducking (one step)
@@ -93,6 +94,23 @@ Optional:
 ```
 
 For custom HTML slides with local images, add a Step 0: generate PNGs via Python script (Playwright), then use `batch_slides` in image mode.
+
+### CSS Text Animations (CapCut/PowerPoint-style)
+
+For text that flies in, bounces, fades, or types out — use CSS `@keyframes` with `"animated": true`:
+
+```python
+# In batch_slides — mix animated + static slides
+batch_slides(slides=[
+    {"html": "<html with @keyframes>", "animated": True},       # CSS animation recording
+    {"html": "<html>static content</html>", "effect": "zoom_in"}, # Ken Burns
+])
+
+# Or standalone
+record_html_video(html_content="<html with @keyframes>...", filename="animated.mp4")
+```
+
+Key rules: `animation-fill-mode: both` on all elements, timeline ≤ slide duration, stagger delay = `0.3 + index × 0.4s`. See `BEST_PRACTICES.md` for 8 CSS animation patterns.
 
 ### Working with Images/Screenshots
 
