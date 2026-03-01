@@ -34,7 +34,7 @@ Restart Claude Code after adding.
 
 ---
 
-## Quick Start — 3 Tool Calls for Video WITH Voiceover
+## Quick Start — 4 Tool Calls for Video + Voice + Music (Recommended)
 
 **Call 1:** `batch_slides` — creates all slide PNGs + animated MP4 clips.
 
@@ -43,30 +43,54 @@ Restart Claude Code after adding.
 ```json
 {
   "scripts": [
-    {"text": "Hơn 200 tin nhắn mỗi ngày... bạn có trả lời kịp không?", "template": "hook"},
-    {"text": "AI Chatbot giúp bạn phản hồi tự động, tiết kiệm 70% chi phí.", "template": "features"},
-    {"text": "Liên hệ ngay để được tư vấn miễn phí!", "template": "cta"}
+    {"text": "Hơn 200 tin nhắn mỗi ngày... bạn có trả lời kịp không?", "preset": "energetic"},
+    {"text": "AI Chatbot giúp bạn phản hồi tự động, tiết kiệm 70% chi phí.", "preset": "informative"},
+    {"text": "Liên hệ ngay để được tư vấn miễn phí!", "preset": "persuasive"}
   ],
   "project_name": "demo",
   "merge": true
 }
 ```
 
-The voice tone **auto-matches** each slide type:
-- `hook` → **energetic** (excited, fast, attention-grabbing)
-- `features` → **informative** (clear, steady, professional)
-- `cta` → **persuasive** (urgent, confident, compelling)
-- `quote` → **warm** (friendly, authentic, slower)
-- `stats` → **authoritative** (commanding, impressive)
-- `comparison` → **dramatic** (intense, building tension)
+Voice presets match content mood:
+- `energetic` — excited, high energy (hooks, openers)
+- `informative` — clear, steady (features, explanations)
+- `persuasive` — urgent, confident (CTAs)
+- `warm` — friendly, authentic (quotes, testimonials)
+- `authoritative` — commanding (stats, data)
+- `dramatic` — intense, building (comparisons, reveals)
 
-**Call 3:** `add_audio` — sync voiceover with video.
+**Call 3:** `merge_clips_crossfade` — join clips (no audio yet).
+
+**Call 4:** `mix_voiceover_music` — voice + music with auto-ducking.
 
 ```json
 {
-  "video_path": "~/vidmake-output/demo_final.mp4",
+  "video_path": "~/vidmake-output/demo_merged.mp4",
+  "voiceover_path": "~/vidmake-output/demo_voiceover.mp3",
+  "music_path": "/path/to/music.mp3",
+  "output_filename": "demo_final.mp4",
+  "music_volume": 0.15,
+  "duck_level": 0.1
+}
+```
+
+Music automatically ducks when voice speaks, rises during silent transitions.
+Use `list_music` to browse available background tracks.
+
+---
+
+## Quick Start — 3 Tool Calls (Voice Only, No Music)
+
+**Calls 1-2:** Same as above (batch_slides + generate_slide_narrations).
+
+**Call 3:** `merge_clips_crossfade` → then `add_audio` to sync voiceover.
+
+```json
+{
+  "video_path": "~/vidmake-output/demo_merged.mp4",
   "audio_path": "~/vidmake-output/demo_voiceover.mp3",
-  "output_filename": "demo_with_voice.mp4"
+  "output_filename": "demo_final.mp4"
 }
 ```
 
@@ -108,12 +132,14 @@ Done. Video is at `~/vidmake-output/demo_final.mp4`.
 
 ## Workflow Tiers
 
-### Tier 1: Fastest (2-3 calls)
+### Tier 1: Fastest (2-4 calls)
 
 Best for: quick video generation, template-based content.
 
 ```
-batch_slides (templates) → merge_clips_crossfade → (optional) add_audio / add_text_overlay
+batch_slides → merge_clips_crossfade                                    (video only, 2 calls)
+batch_slides → narrations → merge → add_audio                          (+ voice, 4 calls)
+batch_slides → narrations → merge → mix_voiceover_music                (+ voice + music, 4 calls)
 ```
 
 ### Tier 2: Medium (N+2 calls)
@@ -129,12 +155,12 @@ create_slide × N → batch_slides (image mode) → merge_clips_crossfade
 Best for: fully custom HTML, different durations per slide, maximum flexibility.
 
 ```
-screenshot_html × N → animate_image × N → merge_clips or merge_clips_crossfade → add_audio → add_text_overlay
+screenshot_html × N → animate_image × N → merge_clips_crossfade → mix_voiceover_music or add_audio
 ```
 
 ---
 
-## All 17 Tools — Reference
+## All 20 Tools — Reference
 
 ### BATCH (Primary Tool)
 
@@ -263,6 +289,33 @@ Mux background music onto a video. Video is not re-encoded.
 
 ---
 
+### AUDIO MIXING
+
+#### `list_music`
+
+List available background music tracks from the `music/` folder with durations.
+
+No parameters. Returns track names, file paths, and durations.
+
+#### `mix_voiceover_music`
+
+Combine video + voiceover + background music in one step with automatic ducking.
+Music automatically ducks when voice is speaking and returns to normal volume during transitions.
+Replaces the 2-step process of `add_audio(voice)` → `add_audio(music)`.
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `video_path` | `str` | required | Input video path (merged clips, no audio) |
+| `voiceover_path` | `str` | required | Voiceover MP3 path |
+| `music_path` | `str` | required | Background music MP3 path. Use `list_music` to browse |
+| `output_filename` | `str` | `"mixed_audio.mp4"` | Output filename |
+| `music_volume` | `float` | `0.15` | Base music volume before ducking (0.0-2.0) |
+| `voice_volume` | `float` | `1.0` | Voiceover volume (0.0-2.0) |
+| `duck_level` | `float` | `0.1` | Ducking aggressiveness (0.01-1.0, lower = more ducking) |
+| `fade_out` | `float` | `2.0` | Fade out music at end (seconds, 0 = no fade) |
+
+---
+
 ### POST-PROCESSING
 
 #### `add_text_overlay`
@@ -353,7 +406,7 @@ With speed:     {"text": "...", "template": "cta", "speed": 1.2}
 Silent slide:   {"text": ""}                             ← skipped in merge
 ```
 
-**Returns:** Individual MP3 paths + merged audio path. Use merged audio with `add_audio`.
+**Returns:** Individual MP3 paths + merged audio path. Use merged audio with `add_audio` (voice only) or `mix_voiceover_music` (voice + music with ducking).
 
 #### `list_voices`
 
@@ -649,7 +702,7 @@ merge_clips_crossfade(
 )
 ```
 
-**Call 4:** Add voiceover to video
+**Call 4a (voice only):** Add voiceover to video
 ```
 add_audio(
   video_path="~/vidmake-output/chatbot_merged.mp4",
@@ -658,7 +711,19 @@ add_audio(
 )
 ```
 
-**Result:** Professional 25s video with context-aware Vietnamese narration.
+**Call 4b (voice + music):** Or use smart mix with auto-ducking
+```
+mix_voiceover_music(
+  video_path="~/vidmake-output/chatbot_merged.mp4",
+  voiceover_path="~/vidmake-output/chatbot_voiceover.mp3",
+  music_path="/path/to/music.mp3",
+  output_filename="chatbot_final.mp4",
+  music_volume=0.15,
+  duck_level=0.1
+)
+```
+
+**Result:** Professional 25s video with context-aware Vietnamese narration (+ auto-ducked background music if using 4b).
 
 ---
 
@@ -683,6 +748,41 @@ batch_slides(slides=[...], size="1920x1080")
 # Or resize an existing video
 resize_video(video_path="~/vidmake-output/tiktok.mp4", size="1080x1080", mode="crop", output_filename="instagram.mp4")
 ```
+
+---
+
+### Example 7: Video + Voiceover + Background Music with Auto-Ducking (4 Calls)
+
+**Goal:** Video with voiceover AND background music. Music automatically ducks when voice speaks.
+
+**Call 1-2:** Same as Example 5 (batch_slides + generate_slide_narrations)
+
+**Call 3:** Merge video clips (no audio yet)
+```
+merge_clips_crossfade(
+  clip_paths=["~/vidmake-output/chatbot_01.mp4", ..., "~/vidmake-output/chatbot_05.mp4"],
+  output_filename="chatbot_merged.mp4"
+)
+```
+
+**Call 4:** Smart mix — voice + music with auto-ducking
+```
+# First, check available music:
+list_music()  # → lists 31 tracks with paths and durations
+
+# Then mix everything in one step:
+mix_voiceover_music(
+  video_path="~/vidmake-output/chatbot_merged.mp4",
+  voiceover_path="~/vidmake-output/chatbot_voiceover.mp3",
+  music_path="/path/to/music/track.mp3",
+  output_filename="chatbot_final.mp4",
+  music_volume=0.15,    # base music level
+  duck_level=0.1,       # lower = more ducking when voice active
+  fade_out=2.0          # music fades out at end
+)
+```
+
+**Result:** Music plays at 0.15 volume during transitions (no voice), ducks down when voice speaks.
 
 ---
 
@@ -722,7 +822,7 @@ Use prompt: product_showcase(product_name="AI Chatbot Pro", features="24/7 repli
 
 8. **Check results with `get_media_info`** if you need to verify duration, resolution, or file size before the next step.
 
-9. **Audio volume 0.5-0.7** is good for background music under voiceover. Use 1.0 for music-only videos. Always add `fade_out_duration: 2.0` for a professional ending.
+9. **For voice + music, use `mix_voiceover_music`** — it auto-ducks music when voice speaks. For music-only videos, use `add_audio` with `audio_volume: 0.7` and `fade_out_duration: 2.0`.
 
 10. **The `image` mode in batch_slides** is useful when the user provides their own screenshots or when you need to re-animate with different effects without re-screenshotting.
 
@@ -732,4 +832,4 @@ Use prompt: product_showcase(product_name="AI Chatbot Pro", features="24/7 repli
 
 13. **Use `silence_between: 0.3`** for fast-paced TikTok content, `0.5-1.0` for more professional corporate videos.
 
-14. **Combine voiceover + background music:** Generate voiceover first, add it to video, then use `add_audio` again with background music at `audio_volume: 0.3` for subtle background.
+14. **Combine voiceover + background music:** Use `mix_voiceover_music` — it combines voice + music with auto-ducking in one step. Music ducks when voice speaks, rises during transitions. Use `list_music` to browse available tracks.

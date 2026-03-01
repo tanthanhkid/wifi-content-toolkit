@@ -39,13 +39,29 @@ async def _screenshot(
     width: int = 1080,
     height: int = 1920,
 ) -> None:
-    """Render *html_content* in a headless browser and save a PNG screenshot."""
+    """Render *html_content* in a headless browser and save a PNG screenshot.
+
+    Uses a temporary file with page.goto() to support local file references
+    (e.g. ``<img src="file:///path/to/image.png">``).
+    """
+    import tempfile
+
     async with async_playwright() as p:
         browser = await p.chromium.launch()
         page = await browser.new_page(viewport={"width": width, "height": height})
-        await page.set_content(html_content, wait_until="networkidle")
-        await page.screenshot(path=str(output_path), full_page=False)
-        await browser.close()
+
+        # Write HTML to temp file so local file:// references work
+        tmp = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".html", delete=False, encoding="utf-8",
+        )
+        try:
+            tmp.write(html_content)
+            tmp.close()
+            await page.goto(f"file://{tmp.name}", wait_until="networkidle")
+            await page.screenshot(path=str(output_path), full_page=False)
+        finally:
+            os.unlink(tmp.name)
+            await browser.close()
 
 
 def screenshot_sync(
@@ -54,8 +70,21 @@ def screenshot_sync(
     width: int = 1080,
     height: int = 1920,
 ) -> None:
-    """Synchronous wrapper around :func:`_screenshot`."""
-    asyncio.run(_screenshot(html_content, output_path, width, height))
+    """Synchronous wrapper around :func:`_screenshot`.
+
+    Handles being called from within a running event loop (e.g. MCP server)
+    by delegating to a separate thread.
+    """
+    coro = _screenshot(html_content, output_path, width, height)
+    try:
+        asyncio.get_running_loop()
+        # Inside an async event loop — run in a separate thread
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            pool.submit(asyncio.run, coro).result()
+    except RuntimeError:
+        # No running loop — safe to use asyncio.run directly
+        asyncio.run(coro)
 
 
 # ---------------------------------------------------------------------------

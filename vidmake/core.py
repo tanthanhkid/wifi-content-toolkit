@@ -674,6 +674,150 @@ def add_facecam_overlay(
     }
 
 
+def mix_audio_with_ducking(
+    video_path: str,
+    voiceover_path: str,
+    music_path: str,
+    output_path: str,
+    music_volume: float = 0.15,
+    voice_volume: float = 1.0,
+    duck_level: float = 0.1,
+    fade_out: float = 2.0,
+) -> dict[str, Any]:
+    """
+    Combine video + voiceover + background music with automatic ducking.
+
+    Uses FFmpeg sidechaincompress so music ducks when voice is speaking
+    and returns to normal volume during silent transitions.
+
+    Parameters
+    ----------
+    video_path:
+        Path to the input video (MP4, typically merged slides with no audio).
+    voiceover_path:
+        Path to the voiceover audio file (MP3/WAV).
+    music_path:
+        Path to the background music file (MP3/WAV).
+    output_path:
+        Destination path for the output MP4 file.
+    music_volume:
+        Base volume for background music before ducking (default 0.15).
+    voice_volume:
+        Volume for the voiceover track (default 1.0).
+    duck_level:
+        How aggressively to duck music when voice is detected.
+        Lower = more ducking. Range 0.01-1.0 (default 0.1).
+    fade_out:
+        Fade out music at end of video, in seconds (default 2.0).
+        Set to 0.0 to disable.
+
+    Returns
+    -------
+    dict with ``success``, ``output_path``, ``duration_seconds``, ``error`` (on failure).
+    """
+    # Validate inputs
+    if not Path(video_path).exists():
+        return {"success": False, "error": f"Video không tồn tại: {video_path}"}
+    if not Path(voiceover_path).exists():
+        return {"success": False, "error": f"File voiceover không tồn tại: {voiceover_path}"}
+    if not Path(music_path).exists():
+        return {"success": False, "error": f"File nhạc nền không tồn tại: {music_path}"}
+    if not shutil.which("ffmpeg"):
+        return {"success": False, "error": "FFmpeg chưa được cài đặt."}
+
+    duck_level = max(0.01, min(1.0, duck_level))
+    music_volume = max(0.0, min(2.0, music_volume))
+    voice_volume = max(0.0, min(2.0, voice_volume))
+
+    out = Path(output_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    # Get video duration to trim music
+    video_duration = _get_audio_duration(video_path)
+    if video_duration is None:
+        # Fallback: use ffprobe on video
+        try:
+            proc = subprocess.run(
+                ["ffprobe", "-v", "quiet", "-print_format", "json",
+                 "-show_format", video_path],
+                capture_output=True, text=True, timeout=15,
+            )
+            data = json.loads(proc.stdout)
+            video_duration = float(data.get("format", {}).get("duration", 60))
+        except Exception:
+            video_duration = 60.0
+
+    # Detect encoder
+    try:
+        from shared.platform import detect_ffmpeg_encoder
+        encoder = detect_ffmpeg_encoder()
+    except Exception:
+        encoder = "libx264"
+
+    # Build FFmpeg filter_complex for sidechain ducking:
+    # [1] voiceover → aformat → volume adjust → [voice]
+    # [2] music → aformat → volume → trim to video length → [music_base]
+    # [music_base][voice] sidechaincompress → [music_ducked]
+    # [voice][music_ducked] amix → [final_audio]
+    music_filters = f"aformat=fltp:44100:stereo,volume={music_volume}"
+    music_filters += f",atrim=0:{video_duration:.2f},asetpts=PTS-STARTPTS"
+    if fade_out > 0:
+        fade_start = max(0, video_duration - fade_out)
+        music_filters += f",afade=t=out:st={fade_start:.2f}:d={fade_out:.2f}"
+
+    # Map duck_level (0.01-1.0) to sidechaincompress parameters:
+    # Lower duck_level → higher ratio → more aggressive ducking
+    # duck_level=0.1 → ratio=20 (heavy ducking)
+    # duck_level=0.5 → ratio=6 (moderate ducking)
+    # duck_level=1.0 → ratio=2 (light ducking)
+    sc_ratio = max(2, min(20, int(2 / duck_level)))
+    sc_threshold = 0.015  # low threshold to catch even soft speech
+
+    filter_complex = (
+        f"[1:a]aformat=fltp:44100:stereo,volume={voice_volume},asplit=2[voice_mix][voice_sc];"
+        f"[2:a]{music_filters}[music_base];"
+        f"[music_base][voice_sc]sidechaincompress="
+        f"level_in=1:threshold={sc_threshold}:ratio={sc_ratio}:"
+        f"attack=5:release=200:makeup=1[music_ducked];"
+        f"[voice_mix][music_ducked]amix=inputs=2:duration=first:dropout_transition=2[final_audio]"
+    )
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", video_path,
+        "-i", voiceover_path,
+        "-i", music_path,
+        "-filter_complex", filter_complex,
+        "-map", "0:v:0",
+        "-map", "[final_audio]",
+        "-c:v", "copy",
+        "-c:a", "aac", "-b:a", "192k",
+        "-shortest",
+        "-movflags", "+faststart",
+        str(out),
+    ]
+
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+    except subprocess.TimeoutExpired:
+        return {"success": False, "error": "FFmpeg vượt quá thời gian cho phép (300s)."}
+    except FileNotFoundError:
+        return {"success": False, "error": "Không tìm thấy lệnh ffmpeg trong PATH."}
+
+    if proc.returncode != 0:
+        stderr_snippet = (proc.stderr or "")[-1000:]
+        return {
+            "success": False,
+            "error": f"FFmpeg lỗi ({proc.returncode}):\n{stderr_snippet}",
+        }
+
+    return {
+        "success": True,
+        "output_path": str(out.resolve()),
+        "duration_seconds": round(video_duration, 2),
+    }
+
+
 def create_animated_slideshow(
     images: list[str],
     output_path: str,

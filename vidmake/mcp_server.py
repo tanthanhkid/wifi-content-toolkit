@@ -18,22 +18,26 @@ Designed to minimize AI round-trips while keeping full customization.
     6. merge_clips_crossfade— Concat with crossfade
     7. add_audio            — Video + music → MP4
 
+  AUDIO MIXING:
+    8. mix_voiceover_music  — Video + voice + music with auto-ducking (sidechaincompress)
+    9. list_music           — List available background music tracks
+
   POST-PROCESSING:
-    8. add_text_overlay     — Text/watermark onto video
-    9. resize_video         — Resize/crop/pad
-   10. add_facecam          — Overlay facecam with rounded corners (auto-loop)
+   10. add_text_overlay     — Text/watermark onto video
+   11. resize_video         — Resize/crop/pad
+   12. add_facecam          — Overlay facecam with rounded corners (auto-loop)
 
   VOICEOVER (ElevenLabs TTS):
-   11. generate_voiceover   — Text → MP3 with context-aware voice
-   12. generate_slide_narrations — Batch: all slide scripts → MP3s + merged audio
-   13. list_voices          — Available ElevenLabs voices
+   13. generate_voiceover   — Text → MP3 with context-aware voice
+   14. generate_slide_narrations — Batch: all slide scripts → MP3s + merged audio
+   15. list_voices          — Available ElevenLabs voices
 
   UTILITY:
-   14. get_media_info       — Probe file info
-   15. list_effects         — Available animation effects
-   16. list_templates       — Available slide templates
-   17. list_outputs         — Files in output dir
-   18. cleanup_outputs      — Delete output files
+   16. get_media_info       — Probe file info
+   17. list_effects         — Available animation effects
+   18. list_templates       — Available slide templates
+   19. list_outputs         — Files in output dir
+   20. cleanup_outputs      — Delete output files
 
 Run: python -m vidmake.mcp_server
 """
@@ -56,16 +60,18 @@ mcp = FastMCP(
     "vidmake",
     instructions=(
         "Video Pipeline MCP Server — create TikTok-style videos with Ken Burns animations + AI voiceover.\n\n"
-        "FASTEST workflow (3 tool calls for a full video WITH voiceover):\n"
-        "  1. batch_slides — pass HTML for all slides at once → PNGs + animated clips\n"
-        "  2. generate_slide_narrations — pass scripts for each slide → context-aware MP3\n"
-        "  3. merge_clips_crossfade → join clips, then add_audio with the voiceover\n\n"
-        "FASTEST workflow (2 tool calls, no voiceover):\n"
+        "FASTEST workflow (4 tool calls for video + voice + music with auto-ducking):\n"
+        "  1. batch_slides — PNGs + animated clips\n"
+        "  2. generate_slide_narrations — context-aware voiceover MP3\n"
+        "  3. merge_clips_crossfade — join clips (no audio)\n"
+        "  4. mix_voiceover_music — voice + music with auto-ducking in one step\n\n"
+        "FASTEST workflow (3 tool calls, voice only, no music):\n"
         "  1. batch_slides → PNGs + animated clips\n"
-        "  2. merge_clips_crossfade → final video\n\n"
-        "VOICEOVER: generate_voiceover creates a single MP3 with voice tone/style\n"
-        "  matched to the video context (energetic for hooks, warm for quotes, etc.).\n"
-        "  generate_slide_narrations does batch TTS for all slides with per-slide context.\n\n"
+        "  2. generate_slide_narrations → voiceover MP3\n"
+        "  3. merge_clips_crossfade → join clips, then add_audio with voiceover\n\n"
+        "SMART AUDIO: mix_voiceover_music combines voice + background music with\n"
+        "  automatic ducking — music ducks when voice speaks, rises during transitions.\n"
+        "  Use list_music to browse available background tracks.\n\n"
         "All output → ~/vidmake-output/\n"
         "Effects: zoom_in, zoom_out, pan_right, pan_down, zoom_topleft"
     ),
@@ -77,6 +83,12 @@ mcp = FastMCP(
 
 OUTPUT_DIR = os.environ.get("VIDMAKE_OUTPUT_DIR", os.path.expanduser("~/vidmake-output"))
 Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
+
+# Music library directory (relative to project root)
+MUSIC_DIR = os.environ.get(
+    "VIDMAKE_MUSIC_DIR",
+    str(Path(__file__).resolve().parent.parent / "music"),
+)
 
 AVAILABLE_EFFECTS = ["zoom_in", "zoom_out", "pan_right", "pan_down", "zoom_topleft"]
 
@@ -848,6 +860,102 @@ def add_audio(
     if proc.returncode != 0:
         return f"Error: {(proc.stderr or '')[-500:]}"
     return f"{out_path} ({_file_info(out_path)})"
+
+
+# ===========================================================================
+# AUDIO MIXING — smart ducking
+# ===========================================================================
+
+
+@mcp.tool()
+def list_music() -> str:
+    """List available background music tracks from the music/ folder with durations.
+
+    Returns:
+        List of music files with names and durations.
+    """
+    music_dir = Path(MUSIC_DIR)
+    if not music_dir.exists():
+        return f"Error: Music directory not found: {MUSIC_DIR}"
+
+    tracks: list[dict] = []
+    for f in sorted(music_dir.iterdir()):
+        if f.suffix.lower() in {".mp3", ".wav", ".m4a", ".ogg", ".flac"}:
+            info = _probe(str(f))
+            duration = info.get("duration", 0)
+            tracks.append({
+                "name": f.stem,
+                "file": str(f),
+                "duration": duration,
+                "duration_display": f"{int(duration // 60)}:{int(duration % 60):02d}" if duration else "?",
+            })
+
+    if not tracks:
+        return f"No music files found in {MUSIC_DIR}"
+
+    lines = [f"Found {len(tracks)} tracks in {MUSIC_DIR}:\n"]
+    for t in tracks:
+        lines.append(f"  {t['duration_display']}  {t['name']}")
+    lines.append(f"\nUse the 'file' path with mix_voiceover_music(music_path=...)")
+
+    return "\n".join(lines) + "\n\n" + json.dumps(tracks, ensure_ascii=False)
+
+
+@mcp.tool()
+def mix_voiceover_music(
+    video_path: str,
+    voiceover_path: str,
+    music_path: str,
+    output_filename: str = "mixed_audio.mp4",
+    music_volume: float = 0.15,
+    voice_volume: float = 1.0,
+    duck_level: float = 0.1,
+    fade_out: float = 2.0,
+) -> str:
+    """Combine video + voiceover + background music in one step with automatic ducking.
+
+    Uses FFmpeg sidechaincompress so music automatically ducks when voice is
+    speaking and returns to normal volume during silent transitions.
+
+    Replaces the 2-step process of add_audio(voice) → add_audio(music).
+
+    Args:
+        video_path: Absolute path to input MP4 (merged clips, no audio).
+        voiceover_path: Absolute path to voiceover MP3.
+        music_path: Absolute path to background music MP3. Use list_music to browse available tracks.
+        output_filename: Output filename.
+        music_volume: Base music volume before ducking (0.0-2.0, default 0.15).
+        voice_volume: Voiceover volume (0.0-2.0, default 1.0).
+        duck_level: How aggressively to duck music (0.01-1.0, lower = more ducking, default 0.1).
+        fade_out: Fade out music at end (seconds, default 2.0). 0 = no fade.
+
+    Returns:
+        Path and info.
+    """
+    from vidmake.core import mix_audio_with_ducking
+
+    out_path = _out(output_filename)
+    result = mix_audio_with_ducking(
+        video_path=video_path,
+        voiceover_path=voiceover_path,
+        music_path=music_path,
+        output_path=out_path,
+        music_volume=music_volume,
+        voice_volume=voice_volume,
+        duck_level=duck_level,
+        fade_out=fade_out,
+    )
+
+    if not result["success"]:
+        return f"Error: {result['error']}"
+
+    info = _file_info(out_path)
+    duration = result.get("duration_seconds", 0)
+    return (
+        f"{out_path} ({info})\n"
+        f"Duration: {duration}s | Music ducking: level={duck_level}, base_vol={music_volume}\n"
+        f"Voice active → music ducks. Voice silent → music at full {music_volume} volume."
+    )
 
 
 # ===========================================================================

@@ -9,11 +9,11 @@
 ```
 ContentTool/
 ├── vidmake/              # Video assembly + Ken Burns animation + MCP server
-│   ├── core.py           # Business logic: create_slideshow(), create_animated_slideshow(), add_facecam_overlay()
+│   ├── core.py           # Business logic: create_slideshow(), create_animated_slideshow(), add_facecam_overlay(), mix_audio_with_ducking()
 │   ├── ui.py             # Gradio web UI (2 tabs: Pipeline + Slideshow)
-│   ├── mcp_server.py     # MCP server (18 tools) for AI-driven video creation + voiceover + facecam
+│   ├── mcp_server.py     # MCP server (20 tools) for AI-driven video creation + voiceover + facecam + smart audio
 │   ├── cli.py            # CLI interface
-│   ├── VIDMAKE_MCP.md    # Full MCP tool reference (all 18 tools, all params)
+│   ├── VIDMAKE_MCP.md    # Full MCP tool reference (all 20 tools, all params)
 │   └── BEST_PRACTICES.md # Best practices for using MCP effectively
 ├── poster/               # HTML template → PNG rendering
 │   ├── core.py           # Playwright screenshot: screenshot_sync(), render_poster()
@@ -24,6 +24,7 @@ ContentTool/
 │   ├── config.py         # Config loading (~/.wfm/config.json)
 │   ├── platform.py       # FFmpeg encoder detection (videotoolbox/nvenc/libx264)
 │   └── logger.py         # Logging
+├── music/                # Background music library (31 MP3 tracks, no-copyright)
 ├── .mcp.json             # MCP server config for Claude Code
 └── Pipeline_HTML_to_Video.md  # Pipeline design document
 ```
@@ -40,7 +41,7 @@ ContentTool/
 
 ## MCP Server — How to Create Videos
 
-The `vidmake` MCP server exposes **18 tools** for video creation. Read these docs in order:
+The `vidmake` MCP server exposes **20 tools** for video creation. Read these docs in order:
 
 1. **`vidmake/BEST_PRACTICES.md`** — Start here. Design philosophy, workflows, script writing rules.
 2. **`vidmake/VIDMAKE_MCP.md`** — Full tool reference with all parameters and examples.
@@ -51,16 +52,20 @@ The `vidmake` MCP server exposes **18 tools** for video creation. Read these doc
 
 Built-in templates (`hook`, `features`, `cta`, etc.) are for **quick prototyping only**. For production videos, write custom HTML per slide.
 
-### Standard Workflow (4-5 tool calls)
+### Standard Workflow (4 tool calls)
 
 ```
-1. Create PNGs     → Custom HTML with Playwright (Python script for local image support)
-                     OR batch_slides with template mode (quick prototyping)
-2. batch_slides    → Animate PNGs with Ken Burns effects (image mode: {"image": "/path.png"})
-3. generate_slide_narrations → Vietnamese voiceover with per-slide voice preset
-4. merge_clips_crossfade + add_audio → Final MP4
-5. add_facecam     → (Optional) Overlay talking-head video in corner, auto-loop, rounded corners
+1. batch_slides              → Animate slides with Ken Burns effects
+2. generate_slide_narrations → Vietnamese voiceover with per-slide voice preset
+3. merge_clips_crossfade     → Merged video (no audio)
+4. mix_voiceover_music       → Voice + music with auto-ducking (one step)
+   OR add_audio              → Voice only (no background music)
+
+Optional:
+5. add_facecam               → Overlay talking-head video in corner
 ```
+
+For custom HTML slides with local images, add a Step 0: generate PNGs via Python script (Playwright), then use `batch_slides` in image mode.
 
 ### Working with Images/Screenshots
 
@@ -84,7 +89,7 @@ For slides that embed local images (app screenshots, product photos):
 - Call `cleanup_outputs(pattern="prefix_*")` before re-generating a video
 - Vary animation effects across slides — don't repeat the same effect
 - **Each slide gets unique visual design** — no repeated layouts
-- Background music volume: `0.25` when layered with voiceover
+- Use `mix_voiceover_music` for voice + music (auto-ducking). Use `list_music` to browse tracks
 
 ### Built-in Templates (Quick Prototyping)
 

@@ -142,9 +142,20 @@ generate_slide_narrations(
     merge=True,
 )
 
-# Merge + audio
-merge_clips_crossfade(clip_paths=[...])
-add_audio(video_path="...merged.mp4", audio_path="...voiceover.mp3")
+# Merge video (no audio yet)
+merge_clips_crossfade(clip_paths=[...], output_filename="merged.mp4")
+
+# Option A: Voice + background music with auto-ducking (RECOMMENDED)
+mix_voiceover_music(
+    video_path="merged.mp4",
+    voiceover_path="voiceover.mp3",
+    music_path="/path/to/music.mp3",  # use list_music() to browse
+    music_volume=0.15,
+    duck_level=0.1,
+)
+
+# Option B: Voice only (no music)
+add_audio(video_path="merged.mp4", audio_path="voiceover.mp3")
 ```
 
 ---
@@ -289,8 +300,17 @@ add_audio(video_path="merged.mp4", audio_path="voiceover.mp3")
 ### 5. Background music too loud over voiceover
 
 ```python
-# Voice-only: volume=1.0
-# Voice + music: music volume=0.25, fade_out_duration=2.0
+# OLD (manual 2-step, constant volume):
+# add_audio(voice) → add_audio(music, vol=0.25)
+
+# NEW (smart ducking — music auto-ducks when voice speaks):
+mix_voiceover_music(
+    video_path="merged.mp4",
+    voiceover_path="voiceover.mp3",
+    music_path="/path/to/music.mp3",   # use list_music to browse tracks
+    music_volume=0.15,                  # base music level
+    duck_level=0.1,                     # lower = more ducking
+)
 ```
 
 ---
@@ -302,8 +322,8 @@ add_audio(video_path="merged.mp4", audio_path="voiceover.mp3")
 | Custom video + voiceover | 4 | batch_slides (image mode) → generate_slide_narrations → merge_clips_crossfade → add_audio |
 | Quick template video | 4 | batch_slides (template mode) → generate_slide_narrations → merge_clips_crossfade → add_audio |
 | Video only (no voice) | 2 | batch_slides → merge_clips_crossfade |
-| Video + voice + music | 5 | ...merge → add_audio (voice) → add_audio (music, vol=0.25) |
-| Video + facecam | +1 | ...add_audio → **add_facecam** (overlay talking head, auto-loop) |
+| **Video + voice + music** | **4** | **batch_slides → generate_slide_narrations → merge_clips_crossfade → mix_voiceover_music** |
+| Video + facecam | +1 | ...add_audio/mix_voiceover_music → **add_facecam** (overlay talking head, auto-loop) |
 | Single poster | 1 | screenshot_html or create_slide |
 | Resize for IG | 1 | resize_video (mode="crop", size="1080x1080") |
 
@@ -336,6 +356,36 @@ add_facecam(
 
 ---
 
+## Smart Audio Mixing
+
+### When to use `mix_voiceover_music` vs `add_audio`
+
+| Scenario | Tool | Why |
+|----------|------|-----|
+| Voice + background music | `mix_voiceover_music` | Auto-ducking, one step |
+| Voice only (no music) | `add_audio` | Simple mux, no ducking needed |
+| Music only (no voice) | `add_audio` | Simple mux |
+| Replace/adjust audio later | `add_audio` | Incremental changes |
+
+### Ducking parameters
+
+| Parameter | Default | Effect |
+|-----------|---------|--------|
+| `music_volume` | `0.15` | Base music level. Increase for louder music during transitions |
+| `duck_level` | `0.1` | Lower = more aggressive ducking. `0.05` for very quiet music under voice |
+| `fade_out` | `2.0` | Music fades out at end. Set `0` for abrupt stop |
+
+### Browsing music
+
+Use `list_music` to see all available tracks with durations:
+```python
+list_music()  # → 31 tracks with names, paths, durations
+```
+
+Then pass the `file` path to `mix_voiceover_music(music_path=...)`.
+
+---
+
 ## Checklist Before Delivering
 
 - [ ] Each slide has unique visual design (no repeated layout)
@@ -343,6 +393,8 @@ add_facecam(
 - [ ] Effects vary across slides
 - [ ] Narration 10-25 words per slide, conversational tone
 - [ ] Voice preset matches content mood (not forced to template name)
+- [ ] If voice + music: used `mix_voiceover_music` (auto-ducking), not 2x `add_audio`
+- [ ] Music fades out at end (`fade_out=2.0`)
 - [ ] Unique `project_name` used
 - [ ] Output verified with `get_media_info`
 - [ ] Resolution correct for target platform
