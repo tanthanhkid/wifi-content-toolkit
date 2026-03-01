@@ -80,18 +80,23 @@ The `vidmake` MCP server exposes **21 tools** for video creation. Read these doc
 
 Built-in templates (`hook`, `features`, `cta`, etc.) are for **quick prototyping only**. For production videos, write custom HTML per slide.
 
-### Standard Workflow (4 tool calls)
+### Standard Workflow (5 steps — ALL mandatory)
+
+Every video MUST include: CSS animated slides, voiceover, background music, and facecam.
 
 ```
-1. batch_slides              → Animate slides (Ken Burns or CSS animations)
+1. batch_slides              → CSS animated slides (animated: true) + Ken Burns for screenshots
 2. generate_slide_narrations → Vietnamese voiceover with per-slide voice preset
 3. merge_clips_crossfade     → Merged video (no audio)
-4. mix_voiceover_music       → Voice + music with auto-ducking (one step)
-   OR add_audio              → Voice only (no background music)
-
-Optional:
-5. add_facecam               → Overlay talking-head video from human/ folder
+4. mix_voiceover_music       → Voice + background music with auto-ducking (ALWAYS use music)
+5. add_facecam               → Facecam overlay from human/ folder (MANDATORY)
 ```
+
+**Mandatory rules:**
+- **CSS Animated slides**: Use `"animated": true` for all text/content slides. Only use Ken Burns for image/screenshot slides.
+- **Background music**: ALWAYS use `mix_voiceover_music` with a track from `music/`. Never deliver a video without music.
+- **Facecam**: ALWAYS add facecam as the final step. If for some reason facecam should be skipped, **ASK the user first** — do not skip silently.
+- **Screenshots**: When the content involves a website, app, or product — take screenshots (Playwright/Firecrawl) and include them as Ken Burns slides.
 
 For custom HTML slides with local images, add a Step 0: generate PNGs via Python script (Playwright), then use `batch_slides` in image mode.
 
@@ -128,16 +133,17 @@ For slides that embed local images (app screenshots, product photos):
 - **Use `...` for pauses, `!` for emphasis**
 - Model: `eleven_v3` (supports Vietnamese + 30 languages)
 
-### Audio Mixing
+### Audio Mixing (Background Music is MANDATORY)
 
-- **Voice + music:** Use `mix_voiceover_music` — auto-ducks music when voice speaks, music rises during silent transitions
+- **Every video MUST have background music.** Use `mix_voiceover_music` — never `add_audio` alone for final output.
 - **Browse tracks:** Use `list_music` to see all 31 tracks with durations and file paths
 - **Music folder:** `music/` contains no-copyright MP3 tracks (corporate, lofi, epic, soft, jazz...)
 - **Key params:** `music_volume=0.15` (base level), `duck_level=0.1` (lower = more ducking), `fade_out=2.0`
-- **Voice only:** Use `add_audio` for simple mux without ducking
+- **`add_audio`** is only for intermediate steps or special cases — not for final video delivery
 
-### Facecam Overlay
+### Facecam Overlay (MANDATORY)
 
+- **Every video MUST have facecam.** If you want to skip facecam, **ASK the user first** — never skip silently.
 - **Folder:** `human/` contains 8 portrait MP4 clips of people (720x1280, ~10s each)
 - **Tool:** `add_facecam` overlays a talking-head video with rounded corners, auto-loops if shorter
 - **Always add facecam as the LAST step** (after all audio mixing)
@@ -159,6 +165,10 @@ Firecrawl MCP provides: `firecrawl_scrape`, `firecrawl_crawl`, `firecrawl_map`, 
 - Call `cleanup_outputs(pattern="prefix_*")` before re-generating a video
 - Vary animation effects across slides — don't repeat the same effect
 - **Each slide gets unique visual design** — no repeated layouts
+- **CSS Animated by default** — all text/content slides use `"animated": true`. Ken Burns only for image/screenshot slides.
+- **Background music is mandatory** — always use `mix_voiceover_music`, never deliver without music
+- **Facecam is mandatory** — always add facecam. If skipping, ask user first.
+- **Screenshots when relevant** — if content is about a website/app/product, take screenshots and include as slides
 
 ### Built-in Templates (Quick Prototyping)
 

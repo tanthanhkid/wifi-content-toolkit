@@ -4,6 +4,22 @@ Guide for AI agents to create high-quality marketing videos efficiently.
 
 ---
 
+## MANDATORY: Every Video Must Have These
+
+**All videos produced MUST include ALL of the following:**
+
+| Component | Required | Details |
+|-----------|----------|---------|
+| **CSS Animated slides** | YES | All text/content slides use `"animated": true`. Ken Burns ONLY for image/screenshot slides. |
+| **Voiceover** | YES | Vietnamese narration with per-slide voice presets |
+| **Background music** | YES | Always use `mix_voiceover_music` with a track from `music/`. NEVER deliver without music. |
+| **Facecam** | YES | Always add facecam from `human/` folder as the LAST step. |
+| **Screenshots** | When relevant | If content involves a website, app, or product — take screenshots (Playwright/Firecrawl) and include as slides. |
+
+**If you want to skip facecam for any reason, you MUST ask the user first.** Never skip silently.
+
+---
+
 ## Core Philosophy: Flexible Design, Not Fixed Templates
 
 **Every video is unique.** The slide structure, layout, and visual design must be driven by the story and content — not forced into a fixed template.
@@ -121,18 +137,19 @@ async def screenshot(html, output_path, w=1080, h=1920):
 
 Then use `batch_slides` with `{"image": "/path/to/png"}` to animate.
 
-### Step 4: Animate, Voiceover, Merge
+### Step 4: Animate, Voiceover, Merge, Music, Facecam
 
 ```python
-# Animate existing PNGs (no screenshot needed)
+# Animate — CSS animated for text, Ken Burns for screenshots
 batch_slides(
     slides=[
-        {"image": "/path/to/slide_01.png", "effect": "zoom_in"},
-        {"image": "/path/to/slide_02.png", "effect": "pan_down"},
-        ...
+        {"html": "<html with @keyframes>", "animated": True},         # Text → CSS animated
+        {"html": "<html with @keyframes>", "animated": True},         # Text → CSS animated
+        {"image": "/path/to/screenshot.png", "effect": "zoom_in"},    # Screenshot → Ken Burns
+        {"html": "<html with @keyframes>", "animated": True},         # Text → CSS animated
     ],
     project_name="unique_name",
-    duration_per_slide=4.5,
+    duration_per_slide=5,
 )
 
 # Voiceover — use "preset" directly, NOT "template"
@@ -149,7 +166,7 @@ generate_slide_narrations(
 # Merge video (no audio yet)
 merge_clips_crossfade(clip_paths=[...], output_filename="merged.mp4")
 
-# Option A: Voice + background music with auto-ducking (RECOMMENDED)
+# Voice + background music with auto-ducking (MANDATORY — always include music)
 mix_voiceover_music(
     video_path="merged.mp4",
     voiceover_path="voiceover.mp3",
@@ -158,8 +175,13 @@ mix_voiceover_music(
     duck_level=0.1,
 )
 
-# Option B: Voice only (no music)
-add_audio(video_path="merged.mp4", audio_path="voiceover.mp3")
+# Facecam overlay (MANDATORY — always add, ask user if skipping)
+add_facecam(
+    video_path="with_audio.mp4",
+    facecam_path="/path/to/human/clip.mp4",  # pick from human/ folder
+    output_filename="final.mp4",
+    position="bottom-right", size=28, border_radius=20, margin=25,
+)
 ```
 
 ---
@@ -198,12 +220,13 @@ WORKFLOW C (CSS anim):   HTML + @keyframes → Playwright record video → MP4
 
 | Content | Workflow | Why |
 |---------|----------|-----|
+| **All text/content slides** | **C (CSS anim) — DEFAULT** | **CSS animated is the standard for all text slides** |
 | Image/screenshot showcase | A (Ken Burns) | Zoom/pan makes static images feel alive |
 | Text flying in, bouncing | C (CSS anim) | Ken Burns can't animate individual elements |
 | Typewriter effect | C (CSS anim) | Requires per-character animation |
 | Numbers counting up | C (CSS anim) | Requires JS + CSS animation |
-| Static text on gradient bg | A (Ken Burns) | Simple, fast, looks professional |
-| Mixed (some animated, some static) | A + C | Use `"animated": true` per slide |
+| Static text on gradient bg | C (CSS anim) | Use fadeIn/slideUp instead of Ken Burns for text |
+| Mixed (some animated, some static) | A + C | `"animated": true` for text, Ken Burns for images |
 
 ### How to Use
 
@@ -556,20 +579,37 @@ mix_voiceover_music(
 
 ## Tool Call Sequences
 
+### Standard Full Video (5 steps — ALL mandatory)
+
+```
+1. batch_slides              → CSS animated (text) + Ken Burns (screenshots)
+2. generate_slide_narrations → Vietnamese voiceover
+3. merge_clips_crossfade     → Merged video
+4. mix_voiceover_music       → Voice + background music (ALWAYS)
+5. add_facecam               → Facecam overlay (ALWAYS, last step)
+```
+
+**Steps 1 & 2 can run in parallel** — narrations don't need slides to exist first.
+
+### All Sequences
+
 | Task | Calls | Sequence |
 |------|-------|----------|
-| Custom video + voiceover | 4 | batch_slides (image mode) → generate_slide_narrations → merge_clips_crossfade → add_audio |
-| Quick template video | 4 | batch_slides (template mode) → generate_slide_narrations → merge_clips_crossfade → add_audio |
-| Video only (no voice) | 2 | batch_slides → merge_clips_crossfade |
-| **Video + voice + music** | **4** | **batch_slides → generate_slide_narrations → merge_clips_crossfade → mix_voiceover_music** |
-| **CSS animated video** | **4** | **batch_slides (animated: true) → generate_slide_narrations → merge_clips_crossfade → mix_voiceover_music** |
-| Mixed (animated + static) | 4 | batch_slides (mixed animated flags) → narrations → merge → audio |
-| Single animated slide | 1 | record_html_video |
-| Video + facecam | +1 | ...add_audio/mix_voiceover_music → **add_facecam** (overlay talking head, auto-loop) |
+| **Full video (standard)** | **5** | **batch_slides → narrations → merge → mix_voiceover_music → add_facecam** |
+| CSS animated + screenshots | 5 | batch_slides (mixed animated) → narrations → merge → mix_voiceover_music → add_facecam |
+| Web-to-video (URL provided) | 6 | Firecrawl scrape + Playwright screenshots → batch_slides → narrations → merge → mix_voiceover_music → add_facecam |
 | Single poster | 1 | screenshot_html or create_slide |
 | Resize for IG | 1 | resize_video (mode="crop", size="1080x1080") |
 
-`batch_slides` and `generate_slide_narrations` can run **in parallel** — slides don't need to exist before generating narrations.
+### When to Ask the User
+
+| Situation | Action |
+|-----------|--------|
+| User didn't mention facecam | Still add facecam (mandatory). Pick a clip from `human/`. |
+| User explicitly says "no facecam" | OK to skip — user has been consulted. |
+| You want to skip facecam for any reason | **ASK the user first.** Never skip silently. |
+| User didn't mention music | Still add music (mandatory). Pick a fitting track from `music/`. |
+| User explicitly says "no music" | OK to skip — user has been consulted. |
 
 ---
 
@@ -630,6 +670,14 @@ Then pass the `file` path to `mix_voiceover_music(music_path=...)`.
 
 ## Checklist Before Delivering
 
+### Mandatory Components
+- [ ] **CSS Animated slides** — all text/content slides use `"animated": true`
+- [ ] **Ken Burns** — only for image/screenshot slides (not for text)
+- [ ] **Background music** — used `mix_voiceover_music` (NEVER deliver without music)
+- [ ] **Facecam** — added as last step (if skipped, user was asked and agreed)
+- [ ] **Screenshots** — if content is about a website/app, screenshots are included
+
+### Quality Checks
 - [ ] Each slide has unique visual design (no repeated layout)
 - [ ] Images/screenshots zoomed in for portrait readability
 - [ ] Effects vary across slides (mix Ken Burns + CSS animations for variety)
@@ -637,7 +685,6 @@ Then pass the `file` path to `mix_voiceover_music(music_path=...)`.
 - [ ] Animated slide timing fits within duration (reserve 0.5s start + 0.3s end)
 - [ ] Narration 10-25 words per slide, conversational tone
 - [ ] Voice preset matches content mood (not forced to template name)
-- [ ] If voice + music: used `mix_voiceover_music` (auto-ducking), not 2x `add_audio`
 - [ ] Music fades out at end (`fade_out=2.0`)
 - [ ] Unique `project_name` used
 - [ ] Output verified with `get_media_info`

@@ -34,11 +34,13 @@ Restart Claude Code after adding.
 
 ---
 
-## Quick Start — 4 Tool Calls for Video + Voice + Music (Recommended)
+## Quick Start — 5 Steps for Full Video (MANDATORY)
 
-**Call 1:** `batch_slides` — creates all slide PNGs + animated MP4 clips.
+**Every video MUST include:** CSS animated slides, voiceover, background music, and facecam.
 
-**Call 2:** `generate_slide_narrations` — generates context-aware voiceover for each slide.
+**Step 1:** `batch_slides` — CSS animated slides (`"animated": true`) + Ken Burns for screenshots.
+
+**Step 2:** `generate_slide_narrations` — generates context-aware voiceover for each slide.
 
 ```json
 {
@@ -60,16 +62,16 @@ Voice presets match content mood:
 - `authoritative` — commanding (stats, data)
 - `dramatic` — intense, building (comparisons, reveals)
 
-**Call 3:** `merge_clips_crossfade` — join clips (no audio yet).
+**Step 3:** `merge_clips_crossfade` — join clips (no audio yet).
 
-**Call 4:** `mix_voiceover_music` — voice + music with auto-ducking.
+**Step 4:** `mix_voiceover_music` — voice + background music with auto-ducking (MANDATORY).
 
 ```json
 {
   "video_path": "~/vidmake-output/demo_merged.mp4",
   "voiceover_path": "~/vidmake-output/demo_voiceover.mp3",
   "music_path": "/path/to/music.mp3",
-  "output_filename": "demo_final.mp4",
+  "output_filename": "demo_with_audio.mp4",
   "music_volume": 0.15,
   "duck_level": 0.1
 }
@@ -78,21 +80,21 @@ Voice presets match content mood:
 Music automatically ducks when voice speaks, rises during silent transitions.
 Use `list_music` to browse available background tracks.
 
----
-
-## Quick Start — 3 Tool Calls (Voice Only, No Music)
-
-**Calls 1-2:** Same as above (batch_slides + generate_slide_narrations).
-
-**Call 3:** `merge_clips_crossfade` → then `add_audio` to sync voiceover.
+**Step 5:** `add_facecam` — facecam overlay (MANDATORY, always last step).
 
 ```json
 {
-  "video_path": "~/vidmake-output/demo_merged.mp4",
-  "audio_path": "~/vidmake-output/demo_voiceover.mp3",
-  "output_filename": "demo_final.mp4"
+  "video_path": "~/vidmake-output/demo_with_audio.mp4",
+  "facecam_path": "/path/to/human/clip.mp4",
+  "output_filename": "demo_final.mp4",
+  "position": "bottom-right",
+  "size": 28,
+  "border_radius": 20,
+  "margin": 25
 }
 ```
+
+**If you want to skip facecam, ASK the user first — never skip silently.**
 
 ---
 
