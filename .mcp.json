@@ -7,6 +7,13 @@
       "env": {
         "ELEVENLABS_API_KEY": "sk_f56fd72ed53814f6ee2edd3befcd0adff76ff7a625fe96a0"
       }
+    },
+    "firecrawl": {
+      "command": "npx",
+      "args": ["-y", "firecrawl-mcp"],
+      "env": {
+        "FIRECRAWL_API_KEY": "fc-1f4964f61f4c4952866345e86ab1f79a"
+      }
     }
   }
 }

@@ -27,7 +27,7 @@ ContentTool/
 │   └── logger.py         # Logging
 ├── music/                # Background music library (31 no-copyright MP3 tracks)
 ├── human/                # Facecam / talking-head videos (8 MP4 clips, portrait, auto-loop)
-├── .mcp.json             # MCP server config for Claude Code
+├── .mcp.json             # MCP server config (vidmake + firecrawl)
 └── Pipeline_HTML_to_Video.md  # Pipeline design document
 ```
 
@@ -125,6 +125,16 @@ For slides that embed local images (app screenshots, product photos):
 - **Always add facecam as the LAST step** (after all audio mixing)
 - **Recommended:** `size=28`, `position=bottom-right`, `border_radius=20`, `margin=25`
 
+### Web-to-Video Workflow (Firecrawl)
+
+When a user provides a URL and asks for a video:
+
+1. **Scrape content** — Use Firecrawl MCP (`firecrawl_scrape`) or CLI (`firecrawl scrape --url <URL> --format markdown`) to extract page content
+2. **Analyze & plan slides** — Identify key info (stats, features, quotes, images) → design unique slides
+3. **Build video** — Follow standard workflow (batch_slides → narrations → merge → audio)
+
+Firecrawl MCP provides: `firecrawl_scrape`, `firecrawl_crawl`, `firecrawl_map`, `firecrawl_search`, `firecrawl_extract`, `firecrawl_deep_research`.
+
 ### Key Rules
 
 - Always set unique `project_name` per video (e.g., `"trinity"`, `"chatbot_v2"`)
@@ -161,6 +171,7 @@ playwright install chromium
 - FFmpeg 8.x (brew install ffmpeg)
 - Playwright + Chromium (for HTML→PNG screenshots)
 - ElevenLabs SDK (for AI voiceover / TTS) — requires `ELEVENLABS_API_KEY` in `.mcp.json`
+- Firecrawl MCP (for web scraping → video scripts) — requires `FIRECRAWL_API_KEY` in `.mcp.json`
 - Gradio 6.x (web UI)
 - Click + Rich (CLI)
 - Jinja2 (poster templates)
