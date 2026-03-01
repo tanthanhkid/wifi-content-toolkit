@@ -295,6 +295,20 @@ Resize, crop, or pad a video to a new resolution.
 | `output_filename` | `str` | `"resized.mp4"` | Output filename |
 | `bg_color` | `str` | `"black"` | Padding color for pad mode |
 
+#### `add_facecam`
+
+Overlay a facecam/talking-head video onto the main video with rounded corners. Loops automatically if shorter than the main video. Perfect for TikTok-style videos.
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `video_path` | `str` | required | Main video path (MP4) |
+| `facecam_path` | `str` | required | Facecam video path (MP4) |
+| `output_filename` | `str` | `"with_facecam.mp4"` | Output filename |
+| `position` | `str` | `"bottom-right"` | `"top-left"`, `"top-right"`, `"bottom-left"`, `"bottom-right"` |
+| `size` | `int` | `30` | Width as % of main video (1-100) |
+| `border_radius` | `int` | `20` | Corner radius in pixels |
+| `margin` | `int` | `20` | Distance from edge in pixels |
+
 ---
 
 ### VOICEOVER (ElevenLabs TTS)

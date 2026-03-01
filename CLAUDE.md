@@ -9,11 +9,11 @@
 ```
 ContentTool/
 ├── vidmake/              # Video assembly + Ken Burns animation + MCP server
-│   ├── core.py           # Business logic: create_slideshow(), create_animated_slideshow()
+│   ├── core.py           # Business logic: create_slideshow(), create_animated_slideshow(), add_facecam_overlay()
 │   ├── ui.py             # Gradio web UI (2 tabs: Pipeline + Slideshow)
-│   ├── mcp_server.py     # MCP server (17 tools) for AI-driven video creation + voiceover
+│   ├── mcp_server.py     # MCP server (18 tools) for AI-driven video creation + voiceover + facecam
 │   ├── cli.py            # CLI interface
-│   ├── VIDMAKE_MCP.md    # Full MCP tool reference (all 17 tools, all params)
+│   ├── VIDMAKE_MCP.md    # Full MCP tool reference (all 18 tools, all params)
 │   └── BEST_PRACTICES.md # Best practices for using MCP effectively
 ├── poster/               # HTML template → PNG rendering
 │   ├── core.py           # Playwright screenshot: screenshot_sync(), render_poster()
@@ -40,48 +40,56 @@ ContentTool/
 
 ## MCP Server — How to Create Videos
 
-The `vidmake` MCP server exposes **17 tools** for video creation. Read these docs in order:
+The `vidmake` MCP server exposes **18 tools** for video creation. Read these docs in order:
 
-1. **`vidmake/BEST_PRACTICES.md`** — Start here. Decision trees, workflows, script writing rules, common mistakes.
+1. **`vidmake/BEST_PRACTICES.md`** — Start here. Design philosophy, workflows, script writing rules.
 2. **`vidmake/VIDMAKE_MCP.md`** — Full tool reference with all parameters and examples.
 
-### Standard Workflow (4 tool calls)
+### Design Philosophy: Flexible, Not Fixed
+
+**Every video gets unique slide designs.** Do NOT use the same template/layout for every slide. Analyze the content (images, screenshots, text, story) and design each slide with its own HTML/CSS tailored to what it needs to communicate.
+
+Built-in templates (`hook`, `features`, `cta`, etc.) are for **quick prototyping only**. For production videos, write custom HTML per slide.
+
+### Standard Workflow (4-5 tool calls)
 
 ```
-1. batch_slides        → Creates slide PNGs + animated MP4 clips (all at once)
-2. generate_slide_narrations → Vietnamese voiceover with context-aware tone per slide
-3. merge_clips_crossfade     → Join clips with smooth transitions
-4. add_audio                 → Sync voiceover with video → Final MP4
+1. Create PNGs     → Custom HTML with Playwright (Python script for local image support)
+                     OR batch_slides with template mode (quick prototyping)
+2. batch_slides    → Animate PNGs with Ken Burns effects (image mode: {"image": "/path.png"})
+3. generate_slide_narrations → Vietnamese voiceover with per-slide voice preset
+4. merge_clips_crossfade + add_audio → Final MP4
+5. add_facecam     → (Optional) Overlay talking-head video in corner, auto-loop, rounded corners
 ```
 
-### Slide Templates (7)
+### Working with Images/Screenshots
 
-| Template | Voice Preset (auto) | Use For |
-|----------|-------------------|---------|
-| `hook` | energetic | Opening — bold stat, shocking question |
-| `features` | informative | Product benefits — 3 cards with icons |
-| `cta` | persuasive | Closing — button + urgent message |
-| `comparison` | dramatic | Before/after — two columns |
-| `quote` | warm | Testimonial — customer voice |
-| `stats` | authoritative | Numbers — 3 big metrics |
-| `blank` | neutral | Simple title + subtitle |
+For slides that embed local images (app screenshots, product photos):
+- Use `file:///absolute/path` in HTML `<img>` tags
+- Generate PNGs via Python script (Playwright with `page.goto` for local file support)
+- Then animate with `batch_slides(slides=[{"image": "/path/to/png"}])`
+- For landscape images in portrait video: use `object-fit: cover` to zoom in, blurred bg to fill frame
 
 ### Voiceover Rules
 
-- **Always include `"template"` in narration scripts** → auto-selects correct voice tone
+- **Use `"preset"` in narration scripts** to set voice tone (e.g., `"energetic"`, `"warm"`)
 - **10-25 words per slide** — must fit within 4-6 second duration
 - **Write for speaking, not reading** — short, punchy, conversational Vietnamese
 - **Use `...` for pauses, `!` for emphasis**
 - Model: `eleven_v3` (supports Vietnamese + 30 languages)
-- Default voice: Đôn Hùng (Vietnamese male)
 
 ### Key Rules
 
 - Always set unique `project_name` per video (e.g., `"trinity"`, `"chatbot_v2"`)
 - Call `cleanup_outputs(pattern="prefix_*")` before re-generating a video
 - Vary animation effects across slides — don't repeat the same effect
-- First slide = `hook`, last slide = `cta` — proven TikTok formula
+- **Each slide gets unique visual design** — no repeated layouts
 - Background music volume: `0.25` when layered with voiceover
+
+### Built-in Templates (Quick Prototyping)
+
+Templates for when speed matters more than design quality:
+`hook`, `features`, `cta`, `comparison`, `quote`, `stats`, `blank`
 
 ### Output
 

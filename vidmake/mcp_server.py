@@ -21,18 +21,19 @@ Designed to minimize AI round-trips while keeping full customization.
   POST-PROCESSING:
     8. add_text_overlay     — Text/watermark onto video
     9. resize_video         — Resize/crop/pad
+   10. add_facecam          — Overlay facecam with rounded corners (auto-loop)
 
   VOICEOVER (ElevenLabs TTS):
-   10. generate_voiceover   — Text → MP3 with context-aware voice
-   11. generate_slide_narrations — Batch: all slide scripts → MP3s + merged audio
-   12. list_voices          — Available ElevenLabs voices
+   11. generate_voiceover   — Text → MP3 with context-aware voice
+   12. generate_slide_narrations — Batch: all slide scripts → MP3s + merged audio
+   13. list_voices          — Available ElevenLabs voices
 
   UTILITY:
-   13. get_media_info       — Probe file info
-   14. list_effects         — Available animation effects
-   15. list_templates       — Available slide templates
-   16. list_outputs         — Files in output dir
-   17. cleanup_outputs      — Delete output files
+   14. get_media_info       — Probe file info
+   15. list_effects         — Available animation effects
+   16. list_templates       — Available slide templates
+   17. list_outputs         — Files in output dir
+   18. cleanup_outputs      — Delete output files
 
 Run: python -m vidmake.mcp_server
 """
@@ -976,6 +977,51 @@ def resize_video(
     if proc.returncode != 0:
         return f"Error: {(proc.stderr or '')[-500:]}"
     return f"{out_path} ({_file_info(out_path)}, {w}x{h}, {mode})"
+
+
+@mcp.tool()
+def add_facecam(
+    video_path: str,
+    facecam_path: str,
+    output_filename: str = "with_facecam.mp4",
+    position: str = "bottom-right",
+    size: int = 30,
+    border_radius: int = 20,
+    margin: int = 20,
+) -> str:
+    """Overlay a facecam video onto the main video with rounded corners. Loops automatically if shorter.
+
+    Perfect for TikTok-style videos where the creator appears in a small corner
+    while content plays in the background.
+
+    Args:
+        video_path: Absolute path to the main video (MP4).
+        facecam_path: Absolute path to the facecam/talking-head video (MP4).
+        output_filename: Output filename.
+        position: Corner placement: top-left, top-right, bottom-left, bottom-right.
+        size: Width of facecam as percentage of main video width (1-100). Default 30.
+        border_radius: Corner radius in pixels for rounded rectangle. Default 20.
+        margin: Distance in pixels from the video edge. Default 20.
+
+    Returns:
+        Path and info.
+    """
+    from vidmake.core import add_facecam_overlay
+
+    out_path = _out(output_filename)
+    result = add_facecam_overlay(
+        video_path=video_path,
+        facecam_path=facecam_path,
+        output_path=out_path,
+        position=position,
+        size=size,
+        border_radius=border_radius,
+        margin=margin,
+    )
+
+    if not result["success"]:
+        return f"Error: {result['error']}"
+    return f"{result['output_path']} ({_file_info(result['output_path'])})"
 
 
 # ===========================================================================

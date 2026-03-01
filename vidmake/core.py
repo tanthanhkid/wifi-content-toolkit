@@ -526,6 +526,154 @@ def _animate_single_slide(
     return {"success": True, "output_path": output_path}
 
 
+def add_facecam_overlay(
+    video_path: str,
+    facecam_path: str,
+    output_path: str,
+    position: str = "bottom-right",
+    size: int = 30,
+    border_radius: int = 20,
+    margin: int = 20,
+) -> dict[str, Any]:
+    """
+    Overlay a facecam video onto the main video with rounded corners.
+
+    The facecam is automatically looped if shorter than the main video.
+
+    Parameters
+    ----------
+    video_path:
+        Path to the main video (MP4).
+    facecam_path:
+        Path to the facecam video (MP4) to overlay.
+    output_path:
+        Destination path for the output MP4.
+    position:
+        Corner placement: ``"top-left"`` | ``"top-right"`` |
+        ``"bottom-left"`` | ``"bottom-right"``.
+    size:
+        Width of the facecam as a percentage of the main video width (1-100).
+    border_radius:
+        Corner radius in pixels for rounded rectangle mask.
+    margin:
+        Distance in pixels from the video edge.
+
+    Returns
+    -------
+    dict with ``success``, ``output_path``, ``error`` (on failure).
+    """
+    # Validate
+    if not Path(video_path).exists():
+        return {"success": False, "error": f"Video chính không tồn tại: {video_path}"}
+    if not Path(facecam_path).exists():
+        return {"success": False, "error": f"Video facecam không tồn tại: {facecam_path}"}
+    if not shutil.which("ffmpeg"):
+        return {"success": False, "error": "FFmpeg chưa được cài đặt."}
+
+    position = position.lower()
+    valid_positions = {"top-left", "top-right", "bottom-left", "bottom-right"}
+    if position not in valid_positions:
+        return {
+            "success": False,
+            "error": f"Vị trí không hợp lệ: '{position}'. Hỗ trợ: {', '.join(valid_positions)}.",
+        }
+
+    size = max(1, min(100, size))
+    border_radius = max(0, border_radius)
+    margin = max(0, margin)
+
+    out = Path(output_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    # Detect encoder
+    try:
+        from shared.platform import detect_ffmpeg_encoder
+        encoder = detect_ffmpeg_encoder()
+    except Exception:
+        encoder = "libx264"
+
+    # Position expressions
+    positions = {
+        "top-left":     (f"{margin}", f"{margin}"),
+        "top-right":    (f"main_w-overlay_w-{margin}", f"{margin}"),
+        "bottom-left":  (f"{margin}", f"main_h-overlay_h-{margin}"),
+        "bottom-right": (f"main_w-overlay_w-{margin}", f"main_h-overlay_h-{margin}"),
+    }
+    x_expr, y_expr = positions[position]
+
+    # Build filter_complex:
+    # 1. Scale facecam to target width (size% of main), keep aspect ratio
+    # 2. Create rounded corners using geq alpha mask with st()/ld() variables
+    # 3. Overlay on main video
+    pip_w_expr = f"iw*{size}/100"
+    r = border_radius
+
+    filter_parts = [
+        # Scale facecam, force even dimensions
+        f"[1:v]scale={pip_w_expr}:-2,setsar=1[pip_scaled]",
+        # Apply rounded corners via alpha mask:
+        # st(0..3) = distance into each corner radius zone
+        # st(4) = hypotenuse to nearest corner center
+        # If hypot > radius → transparent (outside corner)
+        (
+            f"[pip_scaled]format=yuva420p,"
+            f"geq="
+            f"lum='lum(X,Y)':"
+            f"cb='cb(X,Y)':"
+            f"cr='cr(X,Y)':"
+            f"a='st(0,max(0,{r}-X));"
+            f"st(1,max(0,X-(W-{r})));"
+            f"st(2,max(0,{r}-Y));"
+            f"st(3,max(0,Y-(H-{r})));"
+            f"if(gt(hypot(max(ld(0),ld(1)),max(ld(2),ld(3))),{r}),0,255)'"
+            f"[pip_rounded]"
+        ),
+        # Overlay on main video
+        f"[0:v][pip_rounded]overlay={x_expr}:{y_expr}:shortest=1[vout]",
+    ]
+
+    filter_complex = "; ".join(filter_parts)
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", video_path,
+        "-stream_loop", "-1", "-i", facecam_path,
+        "-filter_complex", filter_complex,
+        "-map", "[vout]",
+        "-map", "0:a?",
+        "-c:v", encoder,
+        "-c:a", "copy",
+    ]
+
+    if encoder == "libx264":
+        cmd += ["-preset", "fast", "-crf", "23"]
+    elif encoder == "h264_videotoolbox":
+        cmd += ["-b:v", "4M"]
+    elif encoder == "h264_nvenc":
+        cmd += ["-preset", "fast", "-b:v", "4M"]
+
+    cmd += ["-movflags", "+faststart", "-pix_fmt", "yuv420p", str(out)]
+
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+    except subprocess.TimeoutExpired:
+        return {"success": False, "error": "FFmpeg vượt quá thời gian cho phép (600s)."}
+    except FileNotFoundError:
+        return {"success": False, "error": "Không tìm thấy lệnh ffmpeg trong PATH."}
+
+    if proc.returncode != 0:
+        stderr_snippet = (proc.stderr or "")[-1000:]
+        return {
+            "success": False,
+            "error": f"FFmpeg lỗi ({proc.returncode}):\n{stderr_snippet}",
+        }
+
+    return {
+        "success": True,
+        "output_path": str(out.resolve()),
+    }
+
+
 def create_animated_slideshow(
     images: list[str],
     output_path: str,
