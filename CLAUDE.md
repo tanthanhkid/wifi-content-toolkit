@@ -9,9 +9,10 @@
 ```
 ContentTool/
 ├── vidmake/              # Video assembly + Ken Burns animation + MCP server
-│   ├── core.py           # Business logic: create_slideshow(), create_animated_slideshow(), add_facecam_overlay(), mix_audio_with_ducking()
+│   ├── core.py           # Business logic: create_slideshow(), create_animated_slideshow(),
+│   │                     #   add_facecam_overlay(), mix_audio_with_ducking()
 │   ├── ui.py             # Gradio web UI (2 tabs: Pipeline + Slideshow)
-│   ├── mcp_server.py     # MCP server (20 tools) for AI-driven video creation + voiceover + facecam + smart audio
+│   ├── mcp_server.py     # MCP server (20 tools) for AI-driven video creation
 │   ├── cli.py            # CLI interface
 │   ├── VIDMAKE_MCP.md    # Full MCP tool reference (all 20 tools, all params)
 │   └── BEST_PRACTICES.md # Best practices for using MCP effectively
@@ -24,7 +25,8 @@ ContentTool/
 │   ├── config.py         # Config loading (~/.wfm/config.json)
 │   ├── platform.py       # FFmpeg encoder detection (videotoolbox/nvenc/libx264)
 │   └── logger.py         # Logging
-├── music/                # Background music library (31 MP3 tracks, no-copyright)
+├── music/                # Background music library (31 no-copyright MP3 tracks)
+├── human/                # Facecam / talking-head videos (8 MP4 clips, portrait, auto-loop)
 ├── .mcp.json             # MCP server config for Claude Code
 └── Pipeline_HTML_to_Video.md  # Pipeline design document
 ```
@@ -46,6 +48,31 @@ The `vidmake` MCP server exposes **20 tools** for video creation. Read these doc
 1. **`vidmake/BEST_PRACTICES.md`** — Start here. Design philosophy, workflows, script writing rules.
 2. **`vidmake/VIDMAKE_MCP.md`** — Full tool reference with all parameters and examples.
 
+### All 20 Tools at a Glance
+
+| # | Category | Tool | Description |
+|---|----------|------|-------------|
+| 1 | Batch | `batch_slides` | HTML/template/image → PNG + animated MP4 clips |
+| 2 | Template | `create_slide` | Template → PNG (no HTML needed) |
+| 3 | Atomic | `screenshot_html` | HTML → PNG |
+| 4 | Atomic | `animate_image` | PNG → MP4 clip (Ken Burns) |
+| 5 | Assembly | `merge_clips` | Concat clips → MP4 |
+| 6 | Assembly | `merge_clips_crossfade` | Concat with crossfade transitions |
+| 7 | Assembly | `add_audio` | Video + single audio → MP4 |
+| 8 | Audio Mix | `mix_voiceover_music` | Video + voice + music with auto-ducking |
+| 9 | Audio Mix | `list_music` | Browse 31 background music tracks |
+| 10 | Post | `add_text_overlay` | Text/watermark onto video |
+| 11 | Post | `resize_video` | Resize/crop/pad |
+| 12 | Post | `add_facecam` | Overlay facecam with rounded corners, auto-loop |
+| 13 | Voiceover | `generate_voiceover` | Text → MP3 (context-aware voice) |
+| 14 | Voiceover | `generate_slide_narrations` | Batch TTS for all slides → merged MP3 |
+| 15 | Voiceover | `list_voices` | Available ElevenLabs voices |
+| 16 | Utility | `get_media_info` | Probe file info (duration, resolution, codec) |
+| 17 | Utility | `list_effects` | 5 Ken Burns animation effects |
+| 18 | Utility | `list_templates` | 7 built-in slide templates |
+| 19 | Utility | `list_outputs` | Files in output dir |
+| 20 | Utility | `cleanup_outputs` | Delete output files by pattern |
+
 ### Design Philosophy: Flexible, Not Fixed
 
 **Every video gets unique slide designs.** Do NOT use the same template/layout for every slide. Analyze the content (images, screenshots, text, story) and design each slide with its own HTML/CSS tailored to what it needs to communicate.
@@ -62,7 +89,7 @@ Built-in templates (`hook`, `features`, `cta`, etc.) are for **quick prototyping
    OR add_audio              → Voice only (no background music)
 
 Optional:
-5. add_facecam               → Overlay talking-head video in corner
+5. add_facecam               → Overlay talking-head video from human/ folder
 ```
 
 For custom HTML slides with local images, add a Step 0: generate PNGs via Python script (Playwright), then use `batch_slides` in image mode.
@@ -83,13 +110,27 @@ For slides that embed local images (app screenshots, product photos):
 - **Use `...` for pauses, `!` for emphasis**
 - Model: `eleven_v3` (supports Vietnamese + 30 languages)
 
+### Audio Mixing
+
+- **Voice + music:** Use `mix_voiceover_music` — auto-ducks music when voice speaks, music rises during silent transitions
+- **Browse tracks:** Use `list_music` to see all 31 tracks with durations and file paths
+- **Music folder:** `music/` contains no-copyright MP3 tracks (corporate, lofi, epic, soft, jazz...)
+- **Key params:** `music_volume=0.15` (base level), `duck_level=0.1` (lower = more ducking), `fade_out=2.0`
+- **Voice only:** Use `add_audio` for simple mux without ducking
+
+### Facecam Overlay
+
+- **Folder:** `human/` contains 8 portrait MP4 clips of people (720x1280, ~10s each)
+- **Tool:** `add_facecam` overlays a talking-head video with rounded corners, auto-loops if shorter
+- **Always add facecam as the LAST step** (after all audio mixing)
+- **Recommended:** `size=28`, `position=bottom-right`, `border_radius=20`, `margin=25`
+
 ### Key Rules
 
 - Always set unique `project_name` per video (e.g., `"trinity"`, `"chatbot_v2"`)
 - Call `cleanup_outputs(pattern="prefix_*")` before re-generating a video
 - Vary animation effects across slides — don't repeat the same effect
 - **Each slide gets unique visual design** — no repeated layouts
-- Use `mix_voiceover_music` for voice + music (auto-ducking). Use `list_music` to browse tracks
 
 ### Built-in Templates (Quick Prototyping)
 
