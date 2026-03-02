@@ -120,11 +120,36 @@ CTA (25-30s)   → Câu hỏi mở kích comment. KHÔNG bán hàng trực tiế
 
   [Hashtags 3 tầng: mega + niche + micro + Vietnamese]
 
-  Credit: Inspired by @{author_handle} on X
+  Credit: Inspired by @{author_handle}
+  Source: [URL gốc]
   ```
 
 **Step 9 — Lưu plan:**
 Save kế hoạch đầy đủ ra `~/vidmake-output/{slug}_tiktok_plan.md`
+
+## CHÍNH SÁCH KIỂM DUYỆT TIKTOK (BẮT BUỘC)
+
+### KHÔNG nhắc tên nền tảng khác trong video
+TikTok giảm phân phối video nhắc tên đối thủ. Trong **narration + text overlay trên slide**:
+- ~~X.com / Twitter~~ → "một chuyên gia chia sẻ", "một bài đăng viral", "trên mạng"
+- ~~YouTube~~ → "một video đang viral", "video gốc"
+- ~~Facebook / Instagram / LinkedIn~~ → "mạng xã hội", "cộng đồng online"
+
+**Caption file (.txt):** Được phép ghi credit đầy đủ (URL, handle, tên nền tảng) — caption không ảnh hưởng thuật toán video.
+
+**Ví dụ chuyển đổi cho slide narration:**
+- "222 người đồng ý trên bài đăng viral" ✅ (thay vì "222 likes trên X.com" ❌)
+- "Một chuyên gia AI vừa chia sẻ rằng..." ✅ (thay vì "Post trên Twitter nói..." ❌)
+
+### Từ/chủ đề bị hạn chế
+- Sản phẩm bị kiểm soát (thuốc lá, vape, crypto, cờ bạc)
+- Y tế chưa xác minh, tin giả, bạo lực
+- Spam hashtags không liên quan
+- Kêu gọi mua hàng ngoài TikTok ("link in bio", "mua trên website")
+
+### Nội dung thương mại
+- Video quảng cáo → ghi "Quảng cáo" hoặc Paid Partnership label
+- CTA hướng về tương tác TikTok: comment, follow, save — KHÔNG "liên hệ ngay"
 
 ## GÓC NHÌN CONTENT (QUAN TRỌNG)
 

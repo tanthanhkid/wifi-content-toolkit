@@ -905,9 +905,10 @@ async def _record_html_video_async(
     from playwright.async_api import async_playwright
 
     if encoder is None:
+        # Always use libx264 for WebM→MP4 re-encode (h264_mf hangs on this)
         try:
-            from shared.platform import detect_ffmpeg_encoder
-            encoder = detect_ffmpeg_encoder()
+            from shared.platform import detect_ffmpeg_encoder_for_filter
+            encoder = detect_ffmpeg_encoder_for_filter()
         except Exception:
             encoder = "libx264"
 
@@ -961,7 +962,7 @@ async def _record_html_video_async(
         ]
 
         if encoder == "libx264":
-            cmd += ["-preset", "fast", "-crf", "20"]
+            cmd += ["-preset", "ultrafast", "-crf", "23"]
         elif encoder == "h264_videotoolbox":
             cmd += ["-b:v", bitrate]
         elif encoder == "h264_nvenc":
@@ -971,7 +972,7 @@ async def _record_html_video_async(
 
         cmd += ["-movflags", "+faststart", "-an", str(out)]
 
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
 
         if proc.returncode != 0:
             stderr_snippet = (proc.stderr or "")[-500:]

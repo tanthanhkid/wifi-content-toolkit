@@ -105,7 +105,7 @@ Biến video YouTube thành video TikTok 30 giây theo chiến lược truyền 
 - **Module structure:** Each module has `core.py` (logic), `ui.py` (Gradio), `cli.py` (Click CLI)
 - **Vietnamese UI:** All user-facing labels and error messages are in Vietnamese
 - **Gradio theme:** `gr.themes.Soft()`, pass `theme` and `css` to `launch()` not constructor (Gradio 6.x)
-- **FFmpeg encoder:** Auto-detected via `shared.platform.detect_ffmpeg_encoder()` — h264_videotoolbox on Mac, h264_nvenc on Windows+NVIDIA, libx264 fallback
+- **FFmpeg encoder:** Auto-detected via `shared.platform.detect_ffmpeg_encoder()` — h264_videotoolbox on Mac, h264_nvenc on Windows+NVIDIA, libx264 fallback. `record_html_video()` luôn dùng `detect_ffmpeg_encoder_for_filter()` → libx264 (h264_mf bị hang khi convert WebM→MP4). Preset: `ultrafast -crf 23` cho tốc độ
 - **Screenshots:** `poster.core.screenshot_sync(html, path, width, height)` — Playwright headless Chromium
 - **Package names:** `wfm-vidmake`, `wfm-poster`, `wfm-shared` (pip installable)
 - **Python:** >=3.10, venv at `.venv/`
@@ -150,17 +150,23 @@ The `vidmake` MCP server exposes **22 tools** for video creation. Read these doc
 
 Built-in templates (`hook`, `features`, `cta`, etc.) are for **quick prototyping only**. For production videos, write custom HTML per slide.
 
-### Standard Workflow (5 steps — ALL mandatory)
+### Standard Workflow (Narration-First — BẮT BUỘC)
 
 Every video MUST include: CSS animated slides, voiceover, background music, and facecam.
+**Duration không cố định 30s** — video dài 30s đến vài phút tùy nội dung.
 
+**Quy trình Narration-First (audio khớp hình):**
 ```
-1. batch_slides              → CSS animated slides (animated: true) + Ken Burns for screenshots
-2. generate_slide_narrations → Vietnamese voiceover with per-slide voice preset
-3. merge_clips_crossfade     → Merged video (no audio)
-4. mix_voiceover_music       → Voice + background music with auto-ducking (ALWAYS use music)
-5. add_facecam               → Facecam overlay from human/ folder (MANDATORY)
+1. generate_slide_narrations → Tạo voiceover TRƯỚC, lấy duration từng slide
+2. batch_slides / Python     → Record slides với duration = narration + 0.5s buffer
+3. merge (ffmpeg concat)     → Ghép clips (concat nhanh hơn crossfade)
+4. mix_voiceover_music       → Voice + nhạc nền (dùng -c:v copy, không re-encode)
+5. add_facecam               → Facecam overlay (BẮT BUỘC, bước cuối)
 ```
+
+**Tại sao Narration-First?** Nếu render slide trước với duration cố định (ví dụ 5s), nhưng narration slide 3 dài 18s → audio không khớp hình. Narration-First đảm bảo mỗi slide chạy đúng bằng thời lượng lời nói.
+
+**MCP vs Python:** MCP tools (`mix_voiceover_music`, `add_facecam`) thường timeout trên Windows. Dùng Python script gọi `core.py` trực tiếp cho pipeline ổn định hơn. Chỉ dùng MCP cho `generate_slide_narrations` (ElevenLabs API).
 
 **Mandatory rules:**
 - **CSS Animated slides**: Use `"animated": true` for all text/content slides. Only use Ken Burns for image/screenshot slides.
@@ -168,6 +174,7 @@ Every video MUST include: CSS animated slides, voiceover, background music, and 
 - **Background music**: ALWAYS use `mix_voiceover_music` with a track from `music/`. Never deliver a video without music.
 - **Facecam**: LUÔN thêm facecam ở bước cuối. Dùng `position=bottom-left`, `margin=400` để tránh bị TikTok UI che (caption, nav bar, nút like/comment). KHÔNG dùng `middle-left`, `top-*`, hoặc bên phải. Nếu bỏ facecam, **HỎI user trước**.
 - **Screenshots**: When the content involves a website, app, or product — take screenshots (Playwright/Firecrawl) and include them as Ken Burns slides.
+- **TikTok Content Policy**: Xem mục "Chính Sách Kiểm Duyệt TikTok" bên dưới — KHÔNG nhắc tên nền tảng khác trong narration/slide.
 
 For custom HTML slides with local images, add a Step 0: generate PNGs via Python script (Playwright), then use `batch_slides` in image mode.
 
@@ -316,6 +323,28 @@ KHÔNG BAO GIỜ dùng `font-family: Arial` hoặc `sans-serif` cho slide tiến
 - **Screenshots when relevant** — if content is about a website/app/product, take screenshots and include as slides
 - **Animated stickers preferred** — use `shared.stickers` instead of static Unicode emoji for icons. Use `list_stickers` to browse.
 - **Vietnamese font** — LUÔN dùng `Be Vietnam Pro` (Google Fonts) trong HTML slides. KHÔNG dùng Arial/Segoe UI.
+
+### Chính Sách Kiểm Duyệt TikTok (BẮT BUỘC)
+
+**KHÔNG nhắc tên nền tảng mạng xã hội khác** trong narration và text overlay trên slide. TikTok giảm phân phối (shadowban) video nhắc tên đối thủ.
+
+| Tên cấm | Thay thế bằng |
+|----------|---------------|
+| YouTube | "video đang viral", "kênh công nghệ nổi tiếng" |
+| X / Twitter | "chuyên gia chia sẻ", "bài đăng viral", "trên mạng" |
+| Facebook | "mạng xã hội", "cộng đồng online" |
+| Instagram | "trên mạng", "bài đăng viral" |
+| LinkedIn | "giới chuyên gia", "mạng chuyên nghiệp" |
+
+**Caption file (.txt):** Được phép ghi credit đầy đủ (URL, tên kênh, tên nền tảng) — caption không ảnh hưởng thuật toán video.
+
+**Các hạn chế khác:**
+- Không nhắc sản phẩm bị kiểm soát (crypto, cờ bạc, vape, giảm cân)
+- Không tuyên bố y tế chưa xác minh
+- Không spam hashtag không liên quan
+- Không kêu gọi mua hàng ngoài TikTok ("link in bio", "mua trên website")
+- CTA hướng về tương tác TikTok: comment, follow, save
+- Chỉ dùng nhạc no-copyright từ `music/`
 
 ### Built-in Templates (Quick Prototyping)
 
