@@ -1185,7 +1185,7 @@ def add_facecam(
     video_path: str,
     facecam_path: str,
     output_filename: str = "with_facecam.mp4",
-    position: str = "bottom-right",
+    position: str = "middle-left",
     size: int = 30,
     border_radius: int = 20,
     margin: int = 20,
@@ -1199,7 +1199,7 @@ def add_facecam(
         video_path: Absolute path to the main video (MP4).
         facecam_path: Absolute path to the facecam/talking-head video (MP4).
         output_filename: Output filename.
-        position: Corner placement: top-left, top-right, bottom-left, bottom-right.
+        position: Placement: middle-left, top-left, top-right, bottom-left, bottom-right.
         size: Width of facecam as percentage of main video width (1-100). Default 30.
         border_radius: Corner radius in pixels for rounded rectangle. Default 20.
         margin: Distance in pixels from the video edge. Default 20.

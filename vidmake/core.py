@@ -530,7 +530,7 @@ def add_facecam_overlay(
     video_path: str,
     facecam_path: str,
     output_path: str,
-    position: str = "bottom-right",
+    position: str = "middle-left",
     size: int = 30,
     border_radius: int = 20,
     margin: int = 20,
@@ -549,7 +549,7 @@ def add_facecam_overlay(
     output_path:
         Destination path for the output MP4.
     position:
-        Corner placement: ``"top-left"`` | ``"top-right"`` |
+        Placement: ``"middle-left"`` | ``"top-left"`` | ``"top-right"`` |
         ``"bottom-left"`` | ``"bottom-right"``.
     size:
         Width of the facecam as a percentage of the main video width (1-100).
@@ -571,7 +571,7 @@ def add_facecam_overlay(
         return {"success": False, "error": "FFmpeg chưa được cài đặt."}
 
     position = position.lower()
-    valid_positions = {"top-left", "top-right", "bottom-left", "bottom-right"}
+    valid_positions = {"top-left", "top-right", "bottom-left", "bottom-right", "middle-left"}
     if position not in valid_positions:
         return {
             "success": False,
@@ -598,6 +598,7 @@ def add_facecam_overlay(
         "top-right":    (f"main_w-overlay_w-{margin}", f"{margin}"),
         "bottom-left":  (f"{margin}", f"main_h-overlay_h-{margin}"),
         "bottom-right": (f"main_w-overlay_w-{margin}", f"main_h-overlay_h-{margin}"),
+        "middle-left":  (f"{margin}", f"(main_h-overlay_h)/2"),
     }
     x_expr, y_expr = positions[position]
 
