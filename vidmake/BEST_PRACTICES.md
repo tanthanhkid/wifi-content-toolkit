@@ -180,7 +180,7 @@ add_facecam(
     video_path="with_audio.mp4",
     facecam_path="/path/to/human/clip.mp4",  # pick from human/ folder
     output_filename="final.mp4",
-    position="bottom-right", size=28, border_radius=20, margin=25,
+    position="middle-left", size=28, border_radius=20, margin=25,
 )
 ```
 
@@ -786,7 +786,7 @@ add_facecam(
     video_path="final_with_audio.mp4",
     facecam_path="/path/to/facecam.mp4",
     output_filename="final_with_facecam.mp4",
-    position="bottom-right",   # top-left, top-right, bottom-left, bottom-right
+    position="middle-left",    # middle-left, top-left, top-right, bottom-left, bottom-right
     size=30,                   # 30% of video width
     border_radius=20,          # rounded corners in pixels
     margin=20,                 # distance from edge in pixels

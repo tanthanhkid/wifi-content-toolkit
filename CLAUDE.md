@@ -175,7 +175,7 @@ For slides that embed local images (app screenshots, product photos):
 - **Folder:** `human/` contains 8 portrait MP4 clips of people (720x1280, ~10s each)
 - **Tool:** `add_facecam` overlays a talking-head video with rounded corners, auto-loops if shorter
 - **Always add facecam as the LAST step** (after all audio mixing)
-- **Recommended:** `size=28`, `position=bottom-right`, `border_radius=20`, `margin=25`
+- **Recommended:** `size=28`, `position=middle-left`, `border_radius=20`, `margin=25`
 
 ### Web-to-Video Workflow (Firecrawl)
 

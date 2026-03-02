@@ -87,7 +87,7 @@ Use `list_music` to browse available background tracks.
   "video_path": "~/vidmake-output/demo_with_audio.mp4",
   "facecam_path": "/path/to/human/clip.mp4",
   "output_filename": "demo_final.mp4",
-  "position": "bottom-right",
+  "position": "middle-left",
   "size": 28,
   "border_radius": 20,
   "margin": 25
@@ -378,7 +378,7 @@ Overlay a facecam/talking-head video onto the main video with rounded corners. L
 | `video_path` | `str` | required | Main video path (MP4) |
 | `facecam_path` | `str` | required | Facecam video path (MP4) |
 | `output_filename` | `str` | `"with_facecam.mp4"` | Output filename |
-| `position` | `str` | `"bottom-right"` | `"top-left"`, `"top-right"`, `"bottom-left"`, `"bottom-right"` |
+| `position` | `str` | `"middle-left"` | `"middle-left"`, `"top-left"`, `"top-right"`, `"bottom-left"`, `"bottom-right"` |
 | `size` | `int` | `30` | Width as % of main video (1-100) |
 | `border_radius` | `int` | `20` | Corner radius in pixels |
 | `margin` | `int` | `20` | Distance from edge in pixels |
