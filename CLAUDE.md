@@ -57,6 +57,27 @@ After plan approval, use vidmake MCP tools (batch_slides → narrations → merg
 
 **AUTO-INVOCATION RULE:** When the user asks to create any video (e.g., "tao video", "make a video about...", "video quang cao cho..."), ALWAYS invoke `/tiktok-planner` FIRST to plan the script before producing with vidmake MCP tools. Never skip the planning phase.
 
+### `/x-to-tiktok [X.com URL]` — X.com Post → TikTok Video
+
+Biến post trên X.com/Twitter thành video TikTok 30 giây theo chiến lược truyền thông công ty.
+
+**Usage:** `/x-to-tiktok https://x.com/user/status/123456789`
+
+**What it does (9 steps):**
+1. **Scrape post** — Chrome DevTools: navigate → snapshot (text) → screenshot (hình)
+2. **Extract info** — Author, content, metrics, media, URLs
+3. **Chọn góc tiếp cận** — Theo Master_TikTok_Strategy.md (70% kiến thức / 20% BTS / 10% CTA)
+4. **Research bổ sung** — WebSearch context + trending hashtags
+5. **Viết script 30s** — Hook (0-3s) → Nội dung (3-25s) → CTA (25-30s)
+6. **Map 6 slides** — CSS animated + screenshot post gốc
+7. **Sản xuất video** — batch_slides → narrations → merge → music → facecam
+8. **Đặt tên + caption** — File video tên dễ đọc + caption TikTok copy-paste sẵn
+9. **Lưu plan** → `~/vidmake-output/{slug}_tiktok_plan.md`
+
+**AUTO-TRIGGER:** Khi user gửi link x.com hoặc twitter.com, tự động invoke skill này.
+
+**Lưu ý:** X.com bị Firecrawl chặn → phải dùng Chrome DevTools MCP (navigate_page + take_snapshot + take_screenshot) để scrape.
+
 ## Key Patterns
 
 - **Module structure:** Each module has `core.py` (logic), `ui.py` (Gradio), `cli.py` (Click CLI)
