@@ -28,9 +28,34 @@ ContentTool/
 │   └── stickers.py       # Animated SVG stickers (CapCut/Canva-style, 25+ stickers)
 ├── music/                # Background music library (31 no-copyright MP3 tracks)
 ├── human/                # Facecam / talking-head videos (8 MP4 clips, portrait, auto-loop)
+├── .claude/
+│   └── skills/
+│       └── tiktok-planner/   # /tiktok-planner slash command
+│           └── SKILL.md      # Viral TikTok video planning skill
 ├── .mcp.json             # MCP server config (vidmake + firecrawl)
 └── Pipeline_HTML_to_Video.md  # Pipeline design document
 ```
+
+## Claude Code Skills
+
+### `/tiktok-planner [topic]` — Viral TikTok Video Planner
+
+Master marketer skill that plans TikTok videos optimized for millions of views.
+
+**Usage:** `/tiktok-planner Trinity chatbot AI` or `/tiktok-planner review iPhone 16`
+
+**What it does (7 steps):**
+1. **Research trends** — Searches trending hashtags, viral formats, Vietnamese TikTok trends
+2. **Hashtag strategy** — 3-tier system: mega (100M+), niche (1M-100M), micro (<1M) + Vietnamese hashtags
+3. **3 video titles** — Rated by curiosity score, using viral formulas (curiosity gap, shock value, numbers)
+4. **Script writing** — 3-Second Rule: Hook (0-3s) → Buildup (3-10s) → Value (10-25s) → CTA (25-30s)
+5. **Slide mapping** — Each 3-5s segment: visual, narration, text overlay, sticker, voice preset
+6. **Engagement hooks** — Comment bait, save triggers, share triggers
+7. **Save plan** → `~/vidmake-output/{project}_tiktok_plan.md`
+
+After plan approval, use vidmake MCP tools (batch_slides → narrations → merge → music → facecam) to produce the video.
+
+**AUTO-INVOCATION RULE:** When the user asks to create any video (e.g., "tao video", "make a video about...", "video quang cao cho..."), ALWAYS invoke `/tiktok-planner` FIRST to plan the script before producing with vidmake MCP tools. Never skip the planning phase.
 
 ## Key Patterns
 
@@ -96,8 +121,9 @@ Every video MUST include: CSS animated slides, voiceover, background music, and 
 
 **Mandatory rules:**
 - **CSS Animated slides**: Use `"animated": true` for all text/content slides. Only use Ken Burns for image/screenshot slides.
+- **ElevenLabs voiceover**: LUÔN tạo voiceover tiếng Việt có dấu bằng `generate_slide_narrations`. Văn bản narration PHẢI viết tiếng Việt có dấu đầy đủ (ví dụ: "Một trăm mười tỉ đô la", KHÔNG ĐƯỢC viết "Mot tram muoi ti do la"). Không bao giờ giao video mà không có voiceover.
 - **Background music**: ALWAYS use `mix_voiceover_music` with a track from `music/`. Never deliver a video without music.
-- **Facecam**: ALWAYS add facecam as the final step. If for some reason facecam should be skipped, **ASK the user first** — do not skip silently.
+- **Facecam**: LUÔN thêm facecam ở bước cuối. Dùng `position=bottom-left`, `margin=400` để tránh bị TikTok UI che (caption, nav bar, nút like/comment). KHÔNG dùng `middle-left`, `top-*`, hoặc bên phải. Nếu bỏ facecam, **HỎI user trước**.
 - **Screenshots**: When the content involves a website, app, or product — take screenshots (Playwright/Firecrawl) and include them as Ken Burns slides.
 
 For custom HTML slides with local images, add a Step 0: generate PNGs via Python script (Playwright), then use `batch_slides` in image mode.
@@ -153,13 +179,15 @@ For slides that embed local images (app screenshots, product photos):
 - Then animate with `batch_slides(slides=[{"image": "/path/to/png"}])`
 - For landscape images in portrait video: use `object-fit: cover` to zoom in, blurred bg to fill frame
 
-### Voiceover Rules
+### Quy tắc Voiceover (BẮT BUỘC)
 
-- **Use `"preset"` in narration scripts** to set voice tone (e.g., `"energetic"`, `"warm"`)
-- **10-25 words per slide** — must fit within 4-6 second duration
-- **Write for speaking, not reading** — short, punchy, conversational Vietnamese
-- **Use `...` for pauses, `!` for emphasis**
-- Model: `eleven_v3` (supports Vietnamese + 30 languages)
+- **BẮT BUỘC:** Mọi video PHẢI có voiceover ElevenLabs TTS. KHÔNG BAO GIỜ giao video mà không có voiceover.
+- **Tiếng Việt có dấu:** Tất cả văn bản narration PHẢI viết tiếng Việt có dấu đầy đủ (ví dụ: "Một trăm mười tỉ đô la", KHÔNG ĐƯỢC viết "Mot tram muoi ti do la"). Điều này đảm bảo phát âm chính xác.
+- **Dùng `"preset"`** để điều chỉnh giọng đọc (ví dụ: `"energetic"`, `"warm"`, `"dramatic"`)
+- **10-25 từ mỗi slide** — phải vừa trong 4-6 giây
+- **Viết để nói, không phải để đọc** — ngắn gọn, mạnh mẽ, giọng hội thoại tự nhiên
+- **Dùng `...` để tạo ngắt, `!` để nhấn mạnh**
+- Model: `eleven_v3` (hỗ trợ tiếng Việt + 30 ngôn ngữ)
 
 ### Audio Mixing (Background Music is MANDATORY)
 
@@ -169,13 +197,47 @@ For slides that embed local images (app screenshots, product photos):
 - **Key params:** `music_volume=0.15` (base level), `duck_level=0.1` (lower = more ducking), `fade_out=2.0`
 - **`add_audio`** is only for intermediate steps or special cases — not for final video delivery
 
-### Facecam Overlay (MANDATORY)
+### Facecam Overlay (BẮT BUỘC)
 
-- **Every video MUST have facecam.** If you want to skip facecam, **ASK the user first** — never skip silently.
-- **Folder:** `human/` contains 8 portrait MP4 clips of people (720x1280, ~10s each)
-- **Tool:** `add_facecam` overlays a talking-head video with rounded corners, auto-loops if shorter
-- **Always add facecam as the LAST step** (after all audio mixing)
-- **Recommended:** `size=28`, `position=middle-left`, `border_radius=20`, `margin=25`
+- **Mọi video PHẢI có facecam.** Nếu muốn bỏ, **HỎI user trước** — không được tự ý bỏ.
+- **Thư mục:** `human/` chứa 8 clip MP4 portrait (720x1280, ~10 giây mỗi clip)
+- **Tool:** `add_facecam` overlay video talking-head với bo tròn góc, tự lặp nếu ngắn hơn
+- **Luôn thêm facecam là BƯỚC CUỐI CÙNG** (sau khi mix audio xong)
+
+#### Phân tích TikTok Safe Zone (1080x1920)
+
+```
+┌────────────────────────────┐ 0px
+│  Username, Follow button   │ ~150px (vùng nguy hiểm trên)
+│  ..........................│
+│                            │
+│      VÙNG AN TOÀN          │
+│      (nội dung chính)      │ 150px → 1550px
+│                            │
+│                      [♥]   │ Sidebar phải: like,
+│                      [💬]  │ comment, share, bookmark
+│                      [↗]   │ (~120px từ mép phải)
+│                      [🔖]  │
+│  Caption text...           │ ~1550px
+│  @username · Nhạc nền ♪    │ ~1650px
+│  ──────────────────────    │ ~1700px
+│  [Home][Shop][+][Inbox]    │ ~1780-1920px (thanh điều hướng)
+└────────────────────────────┘ 1920px
+```
+
+**Vùng nguy hiểm bị TikTok UI che:**
+- **Dưới cùng (1550-1920px):** Caption, thanh nhạc, thanh điều hướng = ~370px
+- **Bên phải (960-1080px):** Nút like, comment, share, bookmark = ~120px
+- **Trên cùng (0-150px):** Username, nút Follow
+
+#### Quy tắc đặt Facecam
+
+- **Vị trí:** `position=bottom-left`, `margin=400` — đẩy facecam lên trên vùng caption/nav
+- **KHÔNG dùng:** `middle-left`, `top-*` (che tiêu đề slide), hoặc `bottom-*` với margin nhỏ (bị TikTok UI che)
+- **KHÔNG đặt bên phải** — bị che bởi nút like/comment/share
+- **Recommended:** `size=22`, `position=bottom-left`, `border_radius=20`, `margin=350`
+- Với `size=22`: facecam width ≈ 238px, height ≈ 423px (portrait). Y = 1920 - 423 - 350 = 1147px → nằm trong vùng an toàn, không che nội dung
+- **KHÔNG dùng `size=28` + `margin=400`** — facecam quá lớn và bị đẩy lên giữa video, che nội dung
 
 ### Web-to-Video Workflow (Firecrawl)
 
@@ -186,6 +248,17 @@ When a user provides a URL and asks for a video:
 3. **Build video** — Follow standard workflow (batch_slides → narrations → merge → audio)
 
 Firecrawl MCP provides: `firecrawl_scrape`, `firecrawl_crawl`, `firecrawl_map`, `firecrawl_search`, `firecrawl_extract`, `firecrawl_deep_research`.
+
+### Vietnamese Font (BẮT BUỘC)
+
+**LUÔN dùng Google Font "Be Vietnam Pro"** trong mọi HTML slide. Font hệ thống (Arial, Segoe UI) bị lỗi dấu tiếng Việt trong Playwright/Chromium.
+
+```css
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800;900&display=swap');
+body { font-family: 'Be Vietnam Pro', sans-serif; }
+```
+
+KHÔNG BAO GIỜ dùng `font-family: Arial` hoặc `sans-serif` cho slide tiếng Việt.
 
 ### Key Rules
 
@@ -198,6 +271,7 @@ Firecrawl MCP provides: `firecrawl_scrape`, `firecrawl_crawl`, `firecrawl_map`, 
 - **Facecam is mandatory** — always add facecam. If skipping, ask user first.
 - **Screenshots when relevant** — if content is about a website/app/product, take screenshots and include as slides
 - **Animated stickers preferred** — use `shared.stickers` instead of static Unicode emoji for icons. Use `list_stickers` to browse.
+- **Vietnamese font** — LUÔN dùng `Be Vietnam Pro` (Google Fonts) trong HTML slides. KHÔNG dùng Arial/Segoe UI.
 
 ### Built-in Templates (Quick Prototyping)
 
