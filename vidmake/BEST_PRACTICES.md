@@ -438,6 +438,169 @@ Use with: `{"html": "...", "animated": true, "duration": 5.0}`
 
 ---
 
+## Animated Stickers (CapCut/Canva-style)
+
+**Thay thế Unicode emoji tĩnh bằng sticker SVG động** — sống động hơn, chuyên nghiệp hơn.
+
+### Tại sao dùng sticker thay vì emoji?
+
+| Unicode Emoji | Animated Sticker |
+|---------------|------------------|
+| `⚡` — ký tự tĩnh, nhàm chán | `zap` — sét lấp lánh, nhấp nháy |
+| `✓` — tick đơn giản | `checkmark` — pop-in với bounce effect |
+| `🔥` — hình ảnh cố định | `fire` — ngọn lửa nhảy múa liên tục |
+| `💰` — flat, không hiệu ứng | `money` — tiền bay lượn nhẹ nhàng |
+| `⭐` — static star | `star` — ngôi sao xoay lấp lánh |
+
+### Sticker có sẵn (25+ stickers)
+
+**Cảm xúc:** `fire`, `heart`, `star`, `rocket`, `sparkle`, `thumbsup`, `party`, `zap`
+**Kinh doanh:** `checkmark`, `chart_up`, `money`, `trophy`, `lightbulb`, `target`, `megaphone`, `clock`, `shield`, `bell`
+**Mũi tên:** `arrow_right`, `arrow_down`, `swipe_up`, `pointing_right`
+**Trang trí:** `confetti`, `badge_new`, `wave`, `gift`, `crown`, `diamond`
+
+### Cách sử dụng
+
+**Bước 1: Import sticker module**
+
+```python
+from shared.stickers import get_sticker_html, get_sticker_css, get_all_sticker_css
+```
+
+**Bước 2: Thêm CSS keyframes vào `<style>`**
+
+```python
+# Một sticker
+css = get_sticker_css("fire")
+
+# Nhiều sticker
+css = get_all_sticker_css(["fire", "heart", "checkmark"])
+```
+
+**Bước 3: Embed sticker vào HTML**
+
+```python
+# Inline (chạy theo text)
+sticker = get_sticker_html("fire", size=64)
+
+# Góc trên phải (floating decoration)
+sticker = get_sticker_html("sparkle", size=80, position="top-right")
+
+# Với delay (stagger effect)
+sticker = get_sticker_html("checkmark", size=56, animation_delay="0.5s")
+```
+
+### Full Example — Slide với Stickers
+
+```html
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 1080px; height: 1920px;
+  background: linear-gradient(135deg, #0a0a2e, #1a1a4e, #0d0d3a);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  font-family: 'Segoe UI', sans-serif; color: #fff;
+  padding: 80px; text-align: center; position: relative;
+}
+.stk { display: inline-block; }
+.stk svg { width: 100%; height: 100%; }
+
+/* Sticker keyframes */
+@keyframes stk-fire {
+  0%,100%{transform:scale(1) translateY(0);}
+  25%{transform:scale(1.05) translateY(-4px);}
+  50%{transform:scale(0.98) translateY(-2px);}
+  75%{transform:scale(1.03) translateY(-5px);}
+}
+@keyframes stk-checkmark {
+  0%{transform:scale(0) rotate(-45deg);opacity:0;}
+  50%{transform:scale(1.2) rotate(5deg);opacity:1;}
+  70%{transform:scale(0.95) rotate(-2deg);}
+  100%{transform:scale(1) rotate(0deg);opacity:1;}
+}
+
+/* Text animations */
+@keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+@keyframes slideUp { from{opacity:0;transform:translateY(60px);} to{opacity:1;transform:translateY(0);} }
+
+h1 { font-size: 72px; font-weight: 800; animation: fadeIn 0.6s ease both; animation-delay: 0.3s; }
+.feature { animation: slideUp 0.7s ease both; display: flex; align-items: center; gap: 20px;
+  font-size: 36px; margin: 15px 0; }
+.feature:nth-child(1) { animation-delay: 0.8s; }
+.feature:nth-child(2) { animation-delay: 1.2s; }
+.feature:nth-child(3) { animation-delay: 1.6s; }
+</style></head>
+<body>
+  <!-- Floating sticker decoration -->
+  <div class="stk" style="position:absolute;top:40px;right:40px;width:100px;height:100px;
+    animation:stk-fire 0.8s ease-in-out infinite;">
+    <!-- fire SVG here -->
+  </div>
+
+  <h1>Tính năng HOT</h1>
+
+  <div class="feature">
+    <div class="stk" style="width:56px;height:56px;
+      animation:stk-checkmark 0.6s cubic-bezier(0.34,1.56,0.64,1) both;animation-delay:0.9s;">
+      <!-- checkmark SVG here -->
+    </div>
+    <span>Tự động 24/7</span>
+  </div>
+  <!-- ... more features ... -->
+</body></html>
+```
+
+### Quick Helper — `build_sticker_slide_html()`
+
+Tạo slide hoàn chỉnh với stickers mà không cần viết HTML thủ công:
+
+```python
+from shared.stickers import build_sticker_slide_html
+
+html = build_sticker_slide_html(
+    stickers=[
+        {"name": "fire", "size": 100, "position": "top-right", "delay": "0.3s"},
+        {"name": "sparkle", "size": 80, "position": "top-left", "delay": "0.5s"},
+    ],
+    background="linear-gradient(135deg, #0a0a2e, #1a1a4e)",
+    extra_html='<h1 style="color:#fff;font-size:72px;text-align:center;padding-top:40%;">WOW!</h1>',
+    extra_css='h1{animation:fadeIn 0.6s ease both;animation-delay:0.3s;}'
+        '@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}',
+)
+
+# Dùng với batch_slides
+batch_slides(slides=[{"html": html, "animated": True}])
+```
+
+### Sticker Positions
+
+| Position | Vị trí |
+|----------|--------|
+| `inline` | Inline với text (default) |
+| `top-left` | Góc trên trái |
+| `top-right` | Góc trên phải |
+| `bottom-left` | Góc dưới trái |
+| `bottom-right` | Góc dưới phải |
+| `center` | Giữa màn hình |
+
+### Best Practices cho Stickers
+
+1. **Dùng 2-3 stickers/slide** — quá nhiều sẽ rối mắt
+2. **Kết hợp sticker + CSS text animation** — sticker làm decoration, text vẫn là focus
+3. **Stagger delays** — cho stickers xuất hiện lần lượt, không cùng lúc
+4. **Chọn sticker phù hợp nội dung:**
+   - Hook/opening → `fire`, `rocket`, `zap`
+   - Features → `checkmark`, `lightbulb`, `target`
+   - Stats/numbers → `chart_up`, `trophy`, `star`
+   - CTA → `megaphone`, `bell`, `pointing_right`
+   - Celebration → `party`, `confetti`, `crown`
+   - Trust/security → `shield`, `checkmark`
+5. **Size guidelines:** 48-64px inline, 80-120px floating decoration
+
+---
+
 ## Writing Narration Scripts
 
 ### Rules

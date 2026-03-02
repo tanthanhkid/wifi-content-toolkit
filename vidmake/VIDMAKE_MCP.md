@@ -451,6 +451,26 @@ List available ElevenLabs voices and voice presets.
 
 ---
 
+### STICKERS
+
+#### `list_stickers`
+
+Browse 25+ animated SVG stickers (CapCut/Canva-style). These replace static Unicode emoji with vivid, animated icons.
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `category` | `str` | `""` | Filter: `"reactions"`, `"business"`, `"arrows"`, `"decorative"`. Empty = all. |
+
+**Sticker categories:**
+- **reactions** — fire, heart, star, rocket, sparkle, thumbsup, party, zap
+- **business** — checkmark, chart_up, money, trophy, lightbulb, target, megaphone, clock, shield, bell
+- **arrows** — arrow_right, arrow_down, swipe_up, pointing_right
+- **decorative** — confetti, badge_new, wave, gift, crown, diamond
+
+Use `shared.stickers` module to embed stickers in custom HTML slides. See `BEST_PRACTICES.md` for full guide.
+
+---
+
 ### UTILITY
 
 #### `get_media_info`

@@ -34,12 +34,15 @@ Designed to minimize AI round-trips while keeping full customization.
    15. generate_slide_narrations — Batch: all slide scripts → MP3s + merged audio
    16. list_voices          — Available ElevenLabs voices
 
+  STICKERS:
+   17. list_stickers        — Browse animated SVG stickers (CapCut/Canva-style)
+
   UTILITY:
-   17. get_media_info       — Probe file info
-   18. list_effects         — Available animation effects
-   19. list_templates       — Available slide templates
-   20. list_outputs         — Files in output dir
-   21. cleanup_outputs      — Delete output files
+   18. get_media_info       — Probe file info
+   19. list_effects         — Available animation effects
+   20. list_templates       — Available slide templates
+   21. list_outputs         — Files in output dir
+   22. cleanup_outputs      — Delete output files
 
 Run: python -m vidmake.mcp_server
 """
@@ -77,6 +80,9 @@ mcp = FastMCP(
         "SMART AUDIO: mix_voiceover_music combines voice + background music with\n"
         "  automatic ducking — music ducks when voice speaks, rises during transitions.\n"
         "  Use list_music to browse available background tracks.\n\n"
+        "STICKERS: Use list_stickers to browse 25+ animated SVG stickers (CapCut/Canva-style).\n"
+        "  Replace static emoji icons with vivid animated stickers in slides.\n"
+        "  Use shared.stickers module to embed stickers in custom HTML.\n\n"
         "All output → ~/vidmake-output/\n"
         "Effects: zoom_in, zoom_out, pan_right, pan_down, zoom_topleft"
     ),
@@ -1520,6 +1526,70 @@ def list_voices(language: str = "") -> str:
 
     lines.append(f"\nDefault Vietnamese voice: {_DEFAULT_VOICES['vi']['name']}")
     lines.append(f"Default English voice: {_DEFAULT_VOICES['en']['name']}")
+    return "\n".join(lines)
+
+
+# ===========================================================================
+# STICKERS — animated SVG stickers (CapCut/Canva-style)
+# ===========================================================================
+
+@mcp.tool()
+def list_stickers(category: str = "") -> str:
+    """Browse animated SVG stickers — CapCut/Canva-style icons with CSS animations.
+
+    These stickers replace static Unicode emoji with vivid, animated SVG graphics.
+    Use them in custom HTML slides with "animated": true for maximum impact.
+
+    Categories: reactions, business, arrows, decorative.
+
+    Args:
+        category: Filter by category. Empty = show all stickers.
+
+    Returns:
+        Available stickers with names, descriptions, and usage example.
+    """
+    from shared.stickers import list_stickers as _list, list_categories
+
+    cats = list_categories()
+    stickers = _list(category=category)
+
+    if not stickers:
+        return f"Không tìm thấy sticker cho category '{category}'.\nCategories: {', '.join(cats.keys())}"
+
+    lines = ["=== Animated Stickers (CapCut/Canva-style) ===\n"]
+
+    # Group by category
+    by_cat: dict[str, list] = {}
+    for s in stickers:
+        by_cat.setdefault(s["category"], []).append(s)
+
+    for cat_id, cat_stickers in by_cat.items():
+        label = cats.get(cat_id, cat_id)
+        lines.append(f"── {label} ──")
+        for s in cat_stickers:
+            lines.append(f"  {s['name']:16s} {s['description']}")
+        lines.append("")
+
+    lines.append(f"Total: {len(stickers)} stickers\n")
+    lines.append("=== Cách sử dụng trong HTML slide ===\n")
+    lines.append(
+        "from shared.stickers import get_sticker_html, get_sticker_css\n\n"
+        "# 1. Thêm CSS keyframes vào <style>:\n"
+        "css = get_sticker_css('fire')  # hoặc get_all_sticker_css(['fire','heart'])\n\n"
+        "# 2. Thêm sticker vào HTML:\n"
+        "html = get_sticker_html('fire', size=80, position='top-right')\n\n"
+        "# 3. Hoặc dùng build_sticker_slide_html() để tạo slide hoàn chỉnh:\n"
+        "from shared.stickers import build_sticker_slide_html\n"
+        "full_html = build_sticker_slide_html(\n"
+        "    stickers=[{'name':'fire','size':80,'position':'top-right','delay':'0.3s'}],\n"
+        "    extra_html='<h1>Nội dung slide</h1>',\n"
+        "    extra_css='h1{color:#fff;font-size:72px;text-align:center;padding-top:40%;}',\n"
+        ")\n\n"
+        "# 4. Dùng với batch_slides:\n"
+        '{"html": full_html, "animated": true}\n\n'
+        "Positions: inline, top-left, top-right, bottom-left, bottom-right, center"
+    )
+
     return "\n".join(lines)
 
 

@@ -12,7 +12,7 @@ ContentTool/
 │   ├── core.py           # Business logic: create_slideshow(), create_animated_slideshow(),
 │   │                     #   add_facecam_overlay(), mix_audio_with_ducking(), record_html_video()
 │   ├── ui.py             # Gradio web UI (2 tabs: Pipeline + Slideshow)
-│   ├── mcp_server.py     # MCP server (21 tools) for AI-driven video creation
+│   ├── mcp_server.py     # MCP server (22 tools) for AI-driven video creation
 │   ├── cli.py            # CLI interface
 │   ├── VIDMAKE_MCP.md    # Full MCP tool reference (all 21 tools, all params)
 │   └── BEST_PRACTICES.md # Best practices for using MCP effectively
@@ -24,7 +24,8 @@ ContentTool/
 ├── shared/               # Shared utilities
 │   ├── config.py         # Config loading (~/.wfm/config.json)
 │   ├── platform.py       # FFmpeg encoder detection (videotoolbox/nvenc/libx264)
-│   └── logger.py         # Logging
+│   ├── logger.py         # Logging
+│   └── stickers.py       # Animated SVG stickers (CapCut/Canva-style, 25+ stickers)
 ├── music/                # Background music library (31 no-copyright MP3 tracks)
 ├── human/                # Facecam / talking-head videos (8 MP4 clips, portrait, auto-loop)
 ├── .mcp.json             # MCP server config (vidmake + firecrawl)
@@ -43,12 +44,12 @@ ContentTool/
 
 ## MCP Server — How to Create Videos
 
-The `vidmake` MCP server exposes **21 tools** for video creation. Read these docs in order:
+The `vidmake` MCP server exposes **22 tools** for video creation. Read these docs in order:
 
-1. **`vidmake/BEST_PRACTICES.md`** — Start here. Design philosophy, workflows, script writing rules.
+1. **`vidmake/BEST_PRACTICES.md`** — Start here. Design philosophy, workflows, sticker usage, script writing rules.
 2. **`vidmake/VIDMAKE_MCP.md`** — Full tool reference with all parameters and examples.
 
-### All 21 Tools at a Glance
+### All 22 Tools at a Glance
 
 | # | Category | Tool | Description |
 |---|----------|------|-------------|
@@ -68,11 +69,12 @@ The `vidmake` MCP server exposes **21 tools** for video creation. Read these doc
 | 14 | Voiceover | `generate_voiceover` | Text → MP3 (context-aware voice) |
 | 15 | Voiceover | `generate_slide_narrations` | Batch TTS for all slides → merged MP3 |
 | 16 | Voiceover | `list_voices` | Available ElevenLabs voices |
-| 17 | Utility | `get_media_info` | Probe file info (duration, resolution, codec) |
-| 18 | Utility | `list_effects` | 5 Ken Burns animation effects |
-| 19 | Utility | `list_templates` | 7 built-in slide templates |
-| 20 | Utility | `list_outputs` | Files in output dir |
-| 21 | Utility | `cleanup_outputs` | Delete output files by pattern |
+| 17 | Stickers | `list_stickers` | Browse 25+ animated SVG stickers (CapCut/Canva-style) |
+| 18 | Utility | `get_media_info` | Probe file info (duration, resolution, codec) |
+| 19 | Utility | `list_effects` | 5 Ken Burns animation effects |
+| 20 | Utility | `list_templates` | 7 built-in slide templates |
+| 21 | Utility | `list_outputs` | Files in output dir |
+| 22 | Utility | `cleanup_outputs` | Delete output files by pattern |
 
 ### Design Philosophy: Flexible, Not Fixed
 
@@ -116,6 +118,32 @@ record_html_video(html_content="<html with @keyframes>...", filename="animated.m
 ```
 
 Key rules: `animation-fill-mode: both` on all elements, timeline ≤ slide duration, stagger delay = `0.3 + index × 0.4s`. See `BEST_PRACTICES.md` for 8 CSS animation patterns.
+
+### Animated Stickers (CapCut/Canva-style)
+
+Replace static Unicode emoji (`⚡`, `✓`, `🔥`) with **animated SVG stickers** — bouncing, pulsing, glowing icons that bring slides to life.
+
+- **25+ stickers** across 4 categories: reactions, business, arrows, decorative
+- **Module:** `shared/stickers.py` — `get_sticker_html()`, `get_sticker_css()`, `build_sticker_slide_html()`
+- **MCP tool:** `list_stickers` — browse all available stickers
+- **Works with Playwright recording** — stickers animate in `"animated": true` slides
+
+```python
+from shared.stickers import get_sticker_html, get_sticker_css, build_sticker_slide_html
+
+# Quick: build a slide with floating sticker decorations
+html = build_sticker_slide_html(
+    stickers=[
+        {"name": "fire", "size": 100, "position": "top-right"},
+        {"name": "checkmark", "size": 64, "position": "inline", "delay": "0.5s"},
+    ],
+    extra_html='<h1>Tính năng HOT</h1>',
+    extra_css='h1{color:#fff;font-size:72px;text-align:center;padding-top:40%;}',
+)
+# Use: {"html": html, "animated": true}
+```
+
+See `BEST_PRACTICES.md` for full sticker guide and usage examples.
 
 ### Working with Images/Screenshots
 
@@ -169,6 +197,7 @@ Firecrawl MCP provides: `firecrawl_scrape`, `firecrawl_crawl`, `firecrawl_map`, 
 - **Background music is mandatory** — always use `mix_voiceover_music`, never deliver without music
 - **Facecam is mandatory** — always add facecam. If skipping, ask user first.
 - **Screenshots when relevant** — if content is about a website/app/product, take screenshots and include as slides
+- **Animated stickers preferred** — use `shared.stickers` instead of static Unicode emoji for icons. Use `list_stickers` to browse.
 
 ### Built-in Templates (Quick Prototyping)
 
