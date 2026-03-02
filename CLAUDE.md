@@ -236,6 +236,7 @@ For slides that embed local images (app screenshots, product photos):
 - **KHÔNG dùng:** `middle-left`, `top-*` (che tiêu đề slide), hoặc `bottom-*` với margin nhỏ (bị TikTok UI che)
 - **KHÔNG đặt bên phải** — bị che bởi nút like/comment/share
 - **Recommended:** `size=22`, `position=bottom-left`, `border_radius=20`, `margin=350`
+- X margin cố định 20px sát mép trái (hardcode trong core.py), `margin` chỉ ảnh hưởng khoảng cách dọc (Y)
 - Với `size=22`: facecam width ≈ 238px, height ≈ 423px (portrait). Y = 1920 - 423 - 350 = 1147px → nằm trong vùng an toàn, không che nội dung
 - **KHÔNG dùng `size=28` + `margin=400`** — facecam quá lớn và bị đẩy lên giữa video, che nội dung
 
@@ -282,7 +283,19 @@ Templates for when speed matters more than design quality:
 
 All files → `~/vidmake-output/`
 
-File naming: `{project_name}_{01..N}.png`, `{project_name}_{01..N}.mp4`, `{project_name}_voiceover.mp3`, `{project_name}_final.mp4`
+Intermediate files: `{project_name}_{01..N}.png`, `{project_name}_{01..N}.mp4`, `{project_name}_voiceover.mp3`
+
+**Final video naming (BẮT BUỘC):**
+- File video cuối PHẢI đặt tên dễ đọc, mô tả nội dung: `ten-ngan-gon-noi-dung.mp4` (slug tiếng Việt không dấu, dùng dấu gạch ngang)
+- KHÔNG dùng tên system như `project_final.mp4`
+- Ví dụ: `93phan-tram-doanh-nghiep-chua-san-sang-cho-AI.mp4`, `3-sai-lam-khi-dung-chatbot.mp4`
+
+**TikTok Caption (BẮT BUỘC):**
+- LUÔN tạo file `{ten-video}_caption.txt` kèm theo, chứa caption sẵn để user copy-paste khi đăng TikTok:
+  - Tiêu đề hấp dẫn (hook câu view)
+  - Mô tả ngắn 2-3 dòng
+  - CTA (follow, comment, save)
+  - Hashtags 3 tầng: mega (#viral #fyp #xuhuong), niche (theo ngành), micro (theo chủ đề cụ thể)
 
 ## Commands
 

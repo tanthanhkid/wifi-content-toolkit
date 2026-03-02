@@ -596,13 +596,15 @@ def add_facecam_overlay(
     except Exception:
         encoder = "libx264"
 
-    # Position expressions
+    # Position expressions — margin controls Y (bottom/top distance),
+    # X margin is fixed at 20px for left/right edge positions.
+    x_margin = 20
     positions = {
-        "top-left":     (f"{margin}", f"{margin}"),
-        "top-right":    (f"main_w-overlay_w-{margin}", f"{margin}"),
-        "bottom-left":  (f"{margin}", f"main_h-overlay_h-{margin}"),
-        "bottom-right": (f"main_w-overlay_w-{margin}", f"main_h-overlay_h-{margin}"),
-        "middle-left":  (f"{margin}", f"(main_h-overlay_h)/2"),
+        "top-left":     (f"{x_margin}", f"{margin}"),
+        "top-right":    (f"main_w-overlay_w-{x_margin}", f"{margin}"),
+        "bottom-left":  (f"{x_margin}", f"main_h-overlay_h-{margin}"),
+        "bottom-right": (f"main_w-overlay_w-{x_margin}", f"main_h-overlay_h-{margin}"),
+        "middle-left":  (f"{x_margin}", f"(main_h-overlay_h)/2"),
     }
     x_expr, y_expr = positions[position]
 
