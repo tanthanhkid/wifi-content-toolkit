@@ -161,11 +161,11 @@ def create_slideshow(
         transition_duration = min(transition_duration, duration_per_slide * 0.45)
 
     # ------------------------------------------------------------------
-    # Detect encoder
+    # Detect encoder (filter-safe: h264_mf hangs on filter_complex)
     # ------------------------------------------------------------------
     try:
-        from shared.platform import detect_ffmpeg_encoder
-        encoder = detect_ffmpeg_encoder()
+        from shared.platform import detect_ffmpeg_encoder_for_filter
+        encoder = detect_ffmpeg_encoder_for_filter()
     except Exception:
         encoder = "libx264"
 
@@ -307,6 +307,8 @@ def _build_and_run_ffmpeg(
         cmd += ["-b:v", "4M"]
     elif encoder == "h264_nvenc":
         cmd += ["-preset", "fast", "-b:v", "4M"]
+    elif encoder == "h264_mf":
+        cmd += ["-b:v", "4M"]
 
     if audio_path:
         cmd += ["-c:a", "aac", "-b:a", "192k"]
@@ -508,6 +510,8 @@ def _animate_single_slide(
         cmd += ["-b:v", "4M"]
     elif encoder == "h264_nvenc":
         cmd += ["-preset", "fast", "-b:v", "4M"]
+    elif encoder == "h264_mf":
+        cmd += ["-b:v", "4M"]
 
     cmd.append(output_path)
 
@@ -585,10 +589,10 @@ def add_facecam_overlay(
     out = Path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)
 
-    # Detect encoder
+    # Detect encoder (filter-safe: h264_mf hangs on filter_complex)
     try:
-        from shared.platform import detect_ffmpeg_encoder
-        encoder = detect_ffmpeg_encoder()
+        from shared.platform import detect_ffmpeg_encoder_for_filter
+        encoder = detect_ffmpeg_encoder_for_filter()
     except Exception:
         encoder = "libx264"
 
@@ -652,6 +656,8 @@ def add_facecam_overlay(
         cmd += ["-b:v", "4M"]
     elif encoder == "h264_nvenc":
         cmd += ["-preset", "fast", "-b:v", "4M"]
+    elif encoder == "h264_mf":
+        cmd += ["-b:v", "4M"]
 
     cmd += ["-movflags", "+faststart", "-pix_fmt", "yuv420p", str(out)]
 
@@ -748,10 +754,10 @@ def mix_audio_with_ducking(
         except Exception:
             video_duration = 60.0
 
-    # Detect encoder
+    # Detect encoder (mix uses -c:v copy but keep filter-safe for consistency)
     try:
-        from shared.platform import detect_ffmpeg_encoder
-        encoder = detect_ffmpeg_encoder()
+        from shared.platform import detect_ffmpeg_encoder_for_filter
+        encoder = detect_ffmpeg_encoder_for_filter()
     except Exception:
         encoder = "libx264"
 
@@ -950,6 +956,8 @@ async def _record_html_video_async(
             cmd += ["-b:v", bitrate]
         elif encoder == "h264_nvenc":
             cmd += ["-preset", "fast", "-b:v", bitrate]
+        elif encoder == "h264_mf":
+            cmd += ["-b:v", bitrate]
 
         cmd += ["-movflags", "+faststart", "-an", str(out)]
 
@@ -974,6 +982,125 @@ async def _record_html_video_async(
     finally:
         import shutil as _shutil
         _shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+def batch_record_html_videos(
+    slides: list[dict],
+    encoder: str | None = None,
+    fps: int = 30,
+) -> list[dict[str, Any]]:
+    """Record multiple CSS-animated HTML slides using ONE shared browser.
+
+    Each slide dict must have:
+      - html (str): Full HTML content
+      - output_path (str): Destination MP4 path
+      - width (int): Viewport width
+      - height (int): Viewport height
+      - duration (float): Recording duration in seconds
+
+    This is ~3-4x faster than calling record_html_video() per slide because
+    the browser is launched only once.
+    """
+    import asyncio
+
+    coro = _batch_record_async(slides, encoder, fps)
+    try:
+        asyncio.get_running_loop()
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(asyncio.run, coro).result()
+    except RuntimeError:
+        return asyncio.run(coro)
+
+
+async def _batch_record_async(
+    slides: list[dict],
+    encoder: str | None,
+    fps: int,
+) -> list[dict[str, Any]]:
+    """Async: record all slides with one browser launch."""
+    from playwright.async_api import async_playwright
+
+    if encoder is None:
+        try:
+            from shared.platform import detect_ffmpeg_encoder
+            encoder = detect_ffmpeg_encoder()
+        except Exception:
+            encoder = "libx264"
+
+    results = []
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+
+        for slide in slides:
+            html_content = slide["html"]
+            output_path = slide["output_path"]
+            width = slide.get("width", 1080)
+            height = slide.get("height", 1920)
+            duration = slide.get("duration", 5.0)
+
+            out = Path(output_path)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            tmpdir = tempfile.mkdtemp(prefix="vidmake_batch_")
+
+            try:
+                html_file = Path(tmpdir) / "page.html"
+                html_file.write_text(html_content, encoding="utf-8")
+
+                context = await browser.new_context(
+                    viewport={"width": width, "height": height},
+                    record_video_dir=tmpdir,
+                    record_video_size={"width": width, "height": height},
+                )
+                page = await context.new_page()
+                await page.goto(
+                    f"file://{html_file}", wait_until="networkidle",
+                )
+                await page.wait_for_timeout(int(duration * 1000))
+
+                webm_path = await page.video.path()
+                await page.close()
+                await context.close()
+
+                if not webm_path or not Path(webm_path).exists():
+                    results.append({"success": False, "error": "No video file"})
+                    continue
+
+                bitrate = "6M"
+                cmd = [
+                    "ffmpeg", "-y",
+                    "-i", str(webm_path),
+                    "-c:v", encoder,
+                    "-pix_fmt", "yuv420p",
+                    "-r", str(fps),
+                    "-t", str(duration),
+                ]
+                if encoder == "libx264":
+                    cmd += ["-preset", "fast", "-crf", "20"]
+                elif encoder == "h264_videotoolbox":
+                    cmd += ["-b:v", bitrate]
+                elif encoder == "h264_nvenc":
+                    cmd += ["-preset", "fast", "-b:v", bitrate]
+                elif encoder == "h264_mf":
+                    cmd += ["-b:v", bitrate]
+                cmd += ["-movflags", "+faststart", "-an", str(out)]
+
+                proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                if proc.returncode != 0:
+                    results.append({"success": False, "error": (proc.stderr or "")[-300:]})
+                else:
+                    results.append({"success": True, "output_path": str(out.resolve()), "duration": duration})
+
+            except Exception as exc:
+                results.append({"success": False, "error": str(exc)})
+            finally:
+                import shutil as _shutil
+                _shutil.rmtree(tmpdir, ignore_errors=True)
+
+        await browser.close()
+
+    return results
 
 
 def create_animated_slideshow(
@@ -1032,10 +1159,10 @@ def create_animated_slideshow(
         else:
             resolved_effects.append(ANIMATION_EFFECTS[i % len(ANIMATION_EFFECTS)])
 
-    # Detect encoder
+    # Detect encoder (filter-safe: h264_mf hangs on filter_complex)
     try:
-        from shared.platform import detect_ffmpeg_encoder
-        encoder = detect_ffmpeg_encoder()
+        from shared.platform import detect_ffmpeg_encoder_for_filter
+        encoder = detect_ffmpeg_encoder_for_filter()
     except Exception:
         encoder = "libx264"
 

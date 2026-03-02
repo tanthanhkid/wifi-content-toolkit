@@ -426,9 +426,23 @@ def _render_template(template_id: str, fields: dict, style: dict | None = None) 
 # ---------------------------------------------------------------------------
 
 def _detect_encoder() -> str:
+    """Detect best H.264 encoder for simple operations."""
     try:
         from shared.platform import detect_ffmpeg_encoder
         return detect_ffmpeg_encoder()
+    except Exception:
+        return "libx264"
+
+
+def _detect_encoder_for_filter() -> str:
+    """Detect encoder safe for filter_complex operations.
+
+    h264_mf hangs on complex filter_complex pipelines, so we fall back
+    to libx264 for xfade, overlay, geq, etc.
+    """
+    try:
+        from shared.platform import detect_ffmpeg_encoder_for_filter
+        return detect_ffmpeg_encoder_for_filter()
     except Exception:
         return "libx264"
 
@@ -440,6 +454,8 @@ def _encoder_args(encoder: str) -> list[str]:
         return ["-b:v", "4M"]
     elif encoder == "h264_nvenc":
         return ["-preset", "fast", "-b:v", "4M"]
+    elif encoder == "h264_mf":
+        return ["-b:v", "4M"]
     return []
 
 
@@ -530,7 +546,7 @@ def batch_slides(
         Summary with paths to all PNGs and MP4 clips, ready for merge_clips or merge_clips_crossfade.
     """
     from poster.core import screenshot_sync
-    from vidmake.core import _animate_single_slide, record_html_video
+    from vidmake.core import _animate_single_slide, record_html_video, batch_record_html_videos
 
     if not slides:
         return "Error: No slides provided."
@@ -547,42 +563,53 @@ def batch_slides(
     clip_paths: list[str] = []
     png_paths: list[str] = []
 
+    # --- Phase 1: Batch all animated slides (single browser launch) ---
+    animated_jobs = []  # (original_index, slide_dict, mp4_path)
     for i, slide in enumerate(slides):
-        idx = f"{i+1:02d}"
-        png_path = _out(f"{project_name}_{idx}.png")
-        mp4_path = _out(f"{project_name}_{idx}.mp4")
-
-        # --- CSS Animation path: record browser video directly ---
         if slide.get("animated"):
-            # Get HTML content
+            idx = f"{i+1:02d}"
+            mp4_path = _out(f"{project_name}_{idx}.mp4")
             if "html" in slide:
                 html = slide["html"]
             elif "template" in slide:
                 template_id = slide["template"]
                 if template_id not in _TEMPLATES:
-                    results.append(f"  Slide {idx}: ERROR - unknown template '{template_id}'")
                     continue
                 fields = slide.get("fields", {})
                 html = _render_template(template_id, fields, style)
             else:
-                results.append(f"  Slide {idx}: ERROR - animated slide needs 'html' or 'template'")
                 continue
-
             slide_duration = slide.get("duration", duration_per_slide)
-            result = record_html_video(
-                html_content=html,
-                output_path=mp4_path,
-                width=w_int,
-                height=h_int,
-                duration=slide_duration,
-                fps=fps,
-                encoder=encoder,
-            )
-            if result["success"]:
-                results.append(f"  Slide {idx}: CSS animated → {slide_duration}s → {_file_info(mp4_path)}")
-                clip_paths.append(mp4_path)
+            animated_jobs.append((i, html, mp4_path, slide_duration))
+
+    # Record all animated slides with ONE browser
+    animated_results = {}
+    if animated_jobs:
+        batch_input = [
+            {"html": html, "output_path": mp4, "width": w_int, "height": h_int, "duration": dur}
+            for _, html, mp4, dur in animated_jobs
+        ]
+        batch_out = batch_record_html_videos(batch_input, encoder=encoder, fps=fps)
+        for job, res in zip(animated_jobs, batch_out):
+            animated_results[job[0]] = (res, job[2], job[3])
+
+    # --- Phase 2: Process all slides in order ---
+    for i, slide in enumerate(slides):
+        idx = f"{i+1:02d}"
+        png_path = _out(f"{project_name}_{idx}.png")
+        mp4_path = _out(f"{project_name}_{idx}.mp4")
+
+        # --- CSS Animation: use pre-computed results ---
+        if slide.get("animated"):
+            if i in animated_results:
+                res, mp4_path, slide_duration = animated_results[i]
+                if res["success"]:
+                    results.append(f"  Slide {idx}: CSS animated → {slide_duration}s → {_file_info(mp4_path)}")
+                    clip_paths.append(mp4_path)
+                else:
+                    results.append(f"  Slide {idx}: animated ERROR - {res['error']}")
             else:
-                results.append(f"  Slide {idx}: animated ERROR - {result['error']}")
+                results.append(f"  Slide {idx}: animated ERROR - invalid slide config")
             continue
 
         # --- Static path: screenshot → Ken Burns ---
@@ -896,7 +923,7 @@ def merge_clips_crossfade(
         )
         prev = out_label
 
-    encoder = _detect_encoder()
+    encoder = _detect_encoder_for_filter()
     out_path = _out(output_filename)
 
     cmd = ["ffmpeg", "-y"]
@@ -1121,7 +1148,7 @@ background:{bg_color};border-radius:8px;letter-spacing:1px;white-space:nowrap}}
     if start_time > 0 or end_time > 0:
         enable = f":enable='between(t,{start_time},{end_time})'" if end_time > 0 else f":enable='gte(t,{start_time})'"
 
-    encoder = _detect_encoder()
+    encoder = _detect_encoder_for_filter()
     out_path = _out(output_filename)
     cmd = [
         "ffmpeg", "-y", "-i", video_path, "-i", png_tmp,
@@ -1174,7 +1201,7 @@ def resize_video(
     if not vf:
         return f"Error: Invalid mode '{mode}'. Choose: pad, crop, stretch."
 
-    encoder = _detect_encoder()
+    encoder = _detect_encoder_for_filter()
     out_path = _out(output_filename)
     cmd = ["ffmpeg", "-y", "-i", video_path, "-vf", vf,
            "-c:v", encoder, *_encoder_args(encoder), "-c:a", "copy",
