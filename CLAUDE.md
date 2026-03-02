@@ -78,6 +78,28 @@ Biến post trên X.com/Twitter thành video TikTok 30 giây theo chiến lượ
 
 **Lưu ý:** X.com bị Firecrawl chặn → phải dùng Chrome DevTools MCP (navigate_page + take_snapshot + take_screenshot) để scrape.
 
+### `/yt-to-tiktok [YouTube URL]` — YouTube Video → TikTok Video
+
+Biến video YouTube thành video TikTok 30 giây theo chiến lược truyền thông công ty.
+
+**Usage:** `/yt-to-tiktok https://www.youtube.com/watch?v=xxxxx`
+
+**What it does (10 steps):**
+1. **Scrape video** — Firecrawl (metadata, description, chapters) + Chrome DevTools (comments, screenshot)
+2. **Extract top comments** — 5-10 comment nhiều like nhất, phân loại khen/chê/hỏi/hài
+3. **Chọn góc tiếp cận** — Theo Master_TikTok_Strategy.md (70/20/10)
+4. **Phân tích comments** — Tìm pain point, insight, hook từ comments
+5. **Research bổ sung** — WebSearch context + hashtags
+6. **Viết script 30s** — Hook (con số/comment viral) → Value (key moments) → CTA
+7. **Map 6 slides** — CSS animated + screenshot YouTube
+8. **Sản xuất video** — batch_slides → narrations → merge → music → facecam (random)
+9. **Đặt tên + caption** — File tên dễ đọc + caption TikTok + credit YouTube source
+10. **Lưu plan** → `~/vidmake-output/{slug}_tiktok_plan.md`
+
+**AUTO-TRIGGER:** Khi user gửi link youtube.com hoặc youtu.be, tự động invoke skill này.
+
+**Scraping:** Firecrawl HỖ TRỢ YouTube (metadata, description). Chrome DevTools bổ sung comments + screenshot.
+
 ## Key Patterns
 
 - **Module structure:** Each module has `core.py` (logic), `ui.py` (Gradio), `cli.py` (Click CLI)
