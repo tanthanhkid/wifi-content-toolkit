@@ -569,6 +569,14 @@ def add_facecam_overlay(
     # Validate
     if not Path(video_path).exists():
         return {"success": False, "error": f"Video chính không tồn tại: {video_path}"}
+    # If facecam_path is a directory, randomly pick one MP4 clip
+    fp = Path(facecam_path)
+    if fp.is_dir():
+        import random
+        clips = list(fp.glob("*.mp4"))
+        if not clips:
+            return {"success": False, "error": f"Không có file MP4 trong thư mục: {facecam_path}"}
+        facecam_path = str(random.choice(clips))
     if not Path(facecam_path).exists():
         return {"success": False, "error": f"Video facecam không tồn tại: {facecam_path}"}
     if not shutil.which("ffmpeg"):

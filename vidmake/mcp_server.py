@@ -1230,7 +1230,7 @@ def add_facecam(
 
     Args:
         video_path: Absolute path to the main video (MP4).
-        facecam_path: Absolute path to the facecam/talking-head video (MP4).
+        facecam_path: Path to facecam MP4 file OR directory of MP4 clips (randomly picks one).
         output_filename: Output filename.
         position: Placement: middle-left, top-left, top-right, bottom-left, bottom-right.
         size: Width of facecam as percentage of main video width (1-100). Default 30.
