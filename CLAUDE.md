@@ -28,6 +28,9 @@ ContentTool/
 │   └── stickers.py       # Animated SVG stickers (CapCut/Canva-style, 25+ stickers)
 ├── music/                # Background music library (31 no-copyright MP3 tracks)
 ├── human/                # Facecam / talking-head videos (8 MP4 clips, portrait, auto-loop)
+├── design_system/        # 10 PNG reference slides + 10 theme presets for randomness
+│   ├── themes.py         # 10 design system themes (get_random_theme(), get_theme())
+│   ├── __init__.py       # Package exports
 ├── .claude/
 │   └── skills/
 │       └── tiktok-planner/   # /tiktok-planner slash command
@@ -56,6 +59,26 @@ Master marketer skill that plans TikTok videos optimized for millions of views.
 After plan approval, use vidmake MCP tools (batch_slides → narrations → merge → music → facecam) to produce the video.
 
 **AUTO-INVOCATION RULE:** When the user asks to create any video (e.g., "tao video", "make a video about...", "video quang cao cho..."), ALWAYS invoke `/tiktok-planner` FIRST to plan the script before producing with vidmake MCP tools. Never skip the planning phase.
+
+### `/digital-marketing` — Content Plan & Marketing Strategy
+
+Lên kế hoạch content marketing TikTok cho Trinity Software theo chiến lược 70/20/10.
+
+**Usage:** `/digital-marketing` hoặc "lên content plan", "lịch đăng 30 ngày"
+
+**What it does:**
+1. Phân bổ nội dung theo tỉ trọng 70% kiến thức / 20% BTS / 10% CTA
+2. Xoay vòng 5 series: "Bạn đang mất tiền vì...", "Nên hay không nên?", "Dev life", "Khách gửi gì — Team làm gì", "60 giây demo"
+3. 2 video/ngày theo golden posting hours (7:00 sáng + 20:00 tối)
+4. Mỗi video có: hook, nội dung, CTA, hashtags 3 tầng, giờ đăng
+5. Lưu plan ra file markdown
+
+**Golden Posting Hours (TikTok VN):**
+- 7:00-8:00: Chủ DN check phone buổi sáng
+- 11:30-13:00: Nghỉ trưa (optional bonus slot)
+- 20:00-21:00: Peak engagement tối
+
+**File:** `content_plan_30days.md` — Content plan 30 ngày (60 video)
 
 ### `/x-to-tiktok [X.com URL]` — X.com Post → TikTok Video
 
@@ -252,6 +275,28 @@ For slides that embed local images (app screenshots, product photos):
 - Model: `eleven_v3` (hỗ trợ tiếng Việt + 30 ngôn ngữ)
 - Dùng qua MCP tool `generate_slide_narrations`
 
+### VieNeu-TTS (Offline Alternative to ElevenLabs) — ĐÃ CÀI SẴN
+
+- **VieNeu-TTS** — offline Vietnamese TTS, miễn phí, chạy trên CPU
+- **ĐÃ CÀI:** `vieneu==1.2.3` trong `.venv/` + eSpeak NG 1.52.0 đã cài. KHÔNG cần cài lại.
+- Install (nếu cần): `pip install vieneu --extra-index-url https://pnnbao97.github.io/llama-cpp-python-v0.3.16/cpu/`
+- Dependency: eSpeak NG 1.52.0 (`espeak-ng.msi` from GitHub releases)
+- **6 giọng:** Bình (nam Bắc), Tuyên (nam Bắc), Vĩnh (nam Nam), **Đoan (nữ Nam)**, Ly (nữ Bắc), Ngọc (nữ Bắc)
+- **Mặc định dùng:** Đoan (nữ miền Nam)
+- API: `from vieneu import Vieneu; tts = Vieneu(); voice = tts.get_preset_voice('Doan'); audio = tts.infer(text=..., voice=voice); tts.save(audio, 'out.wav')`
+- Windows: PHẢI set `os.environ['PATH'] = r'C:\Program Files\eSpeak NG' + ';' + os.environ['PATH']`
+
+### Design System (10 Themes)
+
+- Folder: `design_system/` — 10 PNG reference slides + `themes.py` (10 theme presets)
+- **Import:** `from design_system import get_random_theme, get_theme`
+- **Random theme:** `theme = get_random_theme()` → CSS sẵn dùng `theme.base_css()`
+- **Chọn theo tên:** `theme = get_theme("midnight")`
+- **10 themes:** trinity (blue/beige), midnight (purple), coral (red), forest (green), neon (cyan/black), golden (gold/charcoal), ocean (teal), rose (pink), slate (mono gray), electric (orange/navy)
+- **Mỗi theme có:** `base_css()`, `slide_dark_style()`, `slide_light_style()`, color tokens (`primary`, `accent`, `bg_dark`, `bg_light`...)
+- **Adapt cho TikTok:** Giữ bảng màu + typography, chuyển từ 16:9 sang 9:16 (1080x1920)
+- **BẮT BUỘC dùng random theme** khi tạo video mới — `get_random_theme()` — để mỗi video có phong cách khác nhau
+
 ### Audio Mixing (Background Music is MANDATORY)
 
 - **Every video MUST have background music.** Use `mix_voiceover_music` — never `add_audio` alone for final output.
@@ -405,6 +450,19 @@ Intermediate files: `{project_name}_{01..N}.png`, `{project_name}_{01..N}.mp4`, 
   - Mô tả ngắn 2-3 dòng
   - CTA (follow, comment, save)
   - Hashtags 3 tầng: mega (#viral #fyp #xuhuong), niche (theo ngành), micro (theo chủ đề cụ thể)
+
+## Gotchas (Windows — Quan trọng)
+
+- **VieNeu-TTS package:** `pip install vieneu` (KHÔNG phải `vieneu-tts`). API: `audio = tts.infer(text, voice=voice)` → `tts.save(audio, path)`. Voice nữ miền Nam = `Doan`.
+- **VieNeu-TTS emoji crash:** cp1252 crash khi print emoji. Fix: `PYTHONIOENCODING=utf-8` trước khi chạy.
+- **X.com scraping:** Firecrawl bị chặn → dùng Playwright headless trực tiếp (`p.chromium.launch(headless=True)`). Fallback: `api.vxtwitter.com`. KHÔNG dùng `networkidle` (SPA), dùng `load` + `wait_for_timeout(8000)`.
+- **HTML text tiếng Việt:** KIỂM TRA TOÀN BỘ text trong HTML có dấu. Không chỉ narration mà mọi text trên slide.
+- **Caption KHÔNG credit:** BỎ HOÀN TOÀN credit/nguồn trong caption. KHÔNG ghi @username, "Nguồn:", "Credit:". Caption chỉ có: hook + mô tả + CTA + hashtags.
+- **Windows encoding:** `PYTHONIOENCODING=utf-8` + `sys.stdout.reconfigure(encoding='utf-8')` + `open(..., encoding='utf-8')` cho mọi file I/O.
+- **FFmpeg subtitles:** Windows drive letter `D:` bị parse sai → copy SRT vào working dir, dùng relative path.
+- **record_html_video():** `record_html_video(html_content, output_path, width, height, duration, fps, encoder)` — output vào CWD, không phải `~/vidmake-output/`.
+- **mix_audio_with_ducking():** param là `voiceover_path` KHÔNG PHẢI `voice_path`.
+- **$USERPROFILE:** Expand sai trong Git Bash. Hardcode `C:/Users/trant/`.
 
 ## Commands
 
