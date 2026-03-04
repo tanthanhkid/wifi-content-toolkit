@@ -1,0 +1,64 @@
+/**
+ * Light Theme - Canva Style for TikTok
+ * Bright, fresh, and modern
+ */
+
+:root {
+  /* Background Colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --bg-gradient: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+
+  /* Text Colors */
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --text-tertiary: #94a3b8;
+  --text-inverse: #ffffff;
+
+  /* Border Colors */
+  --border-light: #e2e8f0;
+  --border-medium: #cbd5e1;
+  --border-dark: #94a3b8;
+
+  /* Card Backgrounds */
+  --card-bg: #ffffff;
+  --card-bg-alt: #f8fafc;
+
+  /* Glass Effect */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.5);
+
+  /* Shadows */
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --shadow-sm: 0 1px 2px var(--shadow-color);
+  --shadow-md: 0 4px 6px var(--shadow-color);
+  --shadow-lg: 0 10px 15px var(--shadow-color);
+  --shadow-xl: 0 20px 25px var(--shadow-color);
+
+  /* Gradient Overlay for Light Theme */
+  --gradient-overlay: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0.7) 100%
+  );
+}
+
+/* Light Theme Body */
+.theme-light {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.theme-light .card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-light);
+}
+
+.theme-light .text-muted {
+  color: var(--text-secondary);
+}
+
+.theme-light .divider {
+  background: var(--border-medium);
+}

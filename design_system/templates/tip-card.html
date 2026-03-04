@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tip Card - Design System</title>
+  <link rel="stylesheet" href="../colors.css">
+  <link rel="stylesheet" href="../typography.css">
+  <link rel="stylesheet" href="../components.css">
+  <link rel="stylesheet" href="../animations.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-primary);
+      background: #0f172a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 40px;
+    }
+
+    .tiktok-frame {
+      width: 1080px;
+      height: 1920px;
+      position: relative;
+      overflow: hidden;
+      border-radius: 24px;
+      background: linear-gradient(180deg, #fef3c7 0%, #fde68a 100%);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .tip-container {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 120px 80px 140px;
+    }
+
+    .tip-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 28px;
+      background: var(--color-white);
+      border-radius: 9999px;
+      margin-bottom: 40px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+      animation: bounceIn 0.6s var(--ease-elastic) forwards;
+    }
+
+    .tip-badge-icon {
+      font-size: 28px;
+    }
+
+    .tip-badge-text {
+      font-size: var(--text-lg);
+      font-weight: var(--font-bold);
+      color: var(--color-neutral-800);
+    }
+
+    .tip-card {
+      background: var(--color-white);
+      border-radius: 32px;
+      padding: 48px;
+      width: 100%;
+      max-width: 760px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+      position: relative;
+      animation: scaleIn 0.6s var(--ease-bounce-out) 0.2s forwards;
+      opacity: 0;
+    }
+
+    .tip-card::before {
+      content: '';
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      right: -2px;
+      bottom: -2px;
+      background: var(--gradient-sunset);
+      border-radius: 32px;
+      z-index: -1;
+      opacity: 0.5;
+    }
+
+    .tip-icon {
+      font-size: 80px;
+      text-align: center;
+      margin-bottom: 24px;
+      animation: wobble 1s var(--ease-bounce) 0.5s forwards;
+    }
+
+    .tip-title {
+      font-family: var(--font-display);
+      font-size: var(--text-3xl);
+      font-weight: var(--font-extrabold);
+      color: var(--color-neutral-900);
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .tip-title .highlight {
+      background: var(--gradient-sunset);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .tip-content {
+      font-size: var(--text-lg);
+      color: var(--color-neutral-700);
+      line-height: var(--leading-relaxed);
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .tip-points {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 32px;
+    }
+
+    .tip-point {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 20px;
+      background: var(--color-neutral-50);
+      border-radius: 16px;
+      font-size: var(--text-base);
+      font-weight: var(--font-medium);
+      color: var(--color-neutral-800);
+    }
+
+    .tip-point-check {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--gradient-success);
+      border-radius: 50%;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .gradient-success {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+
+    /* Decorative Elements */
+    .sparkle {
+      position: absolute;
+      font-size: 40px;
+      animation: sparkle 1.5s ease-in-out infinite;
+    }
+
+    .sparkle-1 {
+      top: 150px;
+      left: 100px;
+      animation-delay: 0s;
+    }
+
+    .sparkle-2 {
+      top: 200px;
+      right: 150px;
+      animation-delay: 0.3s;
+    }
+
+    .sparkle-3 {
+      bottom: 250px;
+      left: 120px;
+      animation-delay: 0.6s;
+    }
+
+    .sparkle-4 {
+      bottom: 300px;
+      right: 100px;
+      animation-delay: 0.9s;
+    }
+
+    @keyframes sparkle {
+      0%, 100% {
+        opacity: 0;
+        transform: scale(0) rotate(0deg);
+      }
+      50% {
+        opacity: 1;
+        transform: scale(1) rotate(180deg);
+      }
+    }
+
+    /* Light bulb rays */
+    .light-rays {
+      position: absolute;
+      top: -60px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 200px;
+      height: 200px;
+      pointer-events: none;
+    }
+
+    .ray {
+      position: absolute;
+      width: 4px;
+      height: 60px;
+      background: linear-gradient(180deg, #fde68a 0%, transparent 100%);
+      border-radius: 9999px;
+      transform-origin: bottom center;
+      animation: rayPulse 2s ease-in-out infinite;
+    }
+
+    .ray:nth-child(1) { left: 50%; top: 0; animation-delay: 0s; }
+    .ray:nth-child(2) { left: 30%; top: 10px; transform: rotate(-30deg); animation-delay: 0.2s; }
+    .ray:nth-child(3) { left: 70%; top: 10px; transform: rotate(30deg); animation-delay: 0.4s; }
+    .ray:nth-child(4) { left: 10%; top: 40px; transform: rotate(-60deg); animation-delay: 0.6s; }
+    .ray:nth-child(5) { left: 90%; top: 40px; transform: rotate(60deg); animation-delay: 0.8s; }
+
+    @keyframes rayPulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="tiktok-frame">
+    <div class="tip-container">
+      <div class="tip-badge">
+        <span class="tip-badge-icon">💡</span>
+        <span class="tip-badge-text">Pro Tip</span>
+      </div>
+
+      <div class="tip-card">
+        <div class="light-rays">
+          <div class="ray"></div>
+          <div class="ray"></div>
+          <div class="ray"></div>
+          <div class="ray"></div>
+          <div class="ray"></div>
+        </div>
+
+        <div class="tip-icon">🎯</div>
+
+        <h2 class="tip-title">
+          Master the <span class="highlight">Algorithm</span>
+        </h2>
+
+        <p class="tip-content">
+          The secret to viral content isn't luck — it's understanding when and how to post for maximum engagement.
+        </p>
+
+        <div class="tip-points">
+          <div class="tip-point">
+            <span class="tip-point-check">✓</span>
+            <span>Post during peak hours (7-9 AM, 7-9 PM)</span>
+          </div>
+          <div class="tip-point">
+            <span class="tip-point-check">✓</span>
+            <span>Hook viewers in the first 3 seconds</span>
+          </div>
+          <div class="tip-point">
+            <span class="tip-point-check">✓</span>
+            <span>Use trending sounds early</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Decorative Sparkles -->
+    <div class="sparkle sparkle-1">✨</div>
+    <div class="sparkle sparkle-2">⭐</div>
+    <div class="sparkle sparkle-3">✨</div>
+    <div class="sparkle sparkle-4">⭐</div>
+  </div>
+</body>
+</html>

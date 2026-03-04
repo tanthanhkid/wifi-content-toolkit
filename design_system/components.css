@@ -1,0 +1,360 @@
+/**
+ * Components - Canva Style for TikTok
+ * Cards, buttons, badges, overlays with rounded corners and soft shadows
+ */
+
+/* ============================================
+   BASE COMPONENT STYLES
+   ============================================ */
+
+/* Card Base */
+.card {
+  background: var(--color-white);
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 0 8px 32px var(--shadow-lg);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-elevated {
+  box-shadow: 0 12px 48px var(--shadow-xl);
+}
+
+.card-glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+}
+
+/* Card with Gradient Background */
+.card-gradient {
+  background: var(--gradient-ocean);
+  color: var(--color-white);
+}
+
+.card-gradient-sunset {
+  background: var(--gradient-sunset);
+  color: var(--color-white);
+}
+
+.card-gradient-berry {
+  background: var(--gradient-berry);
+  color: var(--color-white);
+}
+
+/* ============================================
+   BUTTONS - Canva Style
+   ============================================ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 32px;
+  font-family: var(--font-primary);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  border-radius: 16px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--gradient-ocean);
+  color: var(--color-white);
+  box-shadow: 0 4px 16px var(--shadow-colored-primary);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px var(--shadow-colored-primary);
+}
+
+.btn-secondary {
+  background: var(--gradient-berry);
+  color: var(--color-white);
+  box-shadow: 0 4px 16px var(--shadow-colored-secondary);
+}
+
+.btn-secondary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px var(--shadow-colored-secondary);
+}
+
+.btn-accent {
+  background: var(--gradient-sunset);
+  color: var(--color-white);
+}
+
+.btn-glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  color: var(--color-white);
+}
+
+.btn-outline {
+  background: transparent;
+  border: 2px solid var(--color-white);
+  color: var(--color-white);
+}
+
+.btn-lg {
+  padding: 20px 40px;
+  font-size: var(--text-lg);
+  border-radius: 20px;
+}
+
+.btn-sm {
+  padding: 12px 24px;
+  font-size: var(--text-sm);
+  border-radius: 12px;
+}
+
+/* ============================================
+   BADGES
+   ============================================ */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 16px;
+  font-family: var(--font-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  border-radius: 9999px;
+  transition: all 0.3s ease;
+}
+
+.badge-primary {
+  background: var(--color-primary-100);
+  color: var(--color-primary-700);
+}
+
+.badge-secondary {
+  background: var(--color-secondary-100);
+  color: var(--color-secondary-700);
+}
+
+.badge-accent {
+  background: var(--color-accent-100);
+  color: var(--color-accent-700);
+}
+
+.badge-success {
+  background: var(--color-success-light);
+  color: var(--color-success-dark);
+}
+
+.badge-warning {
+  background: var(--color-warning-light);
+  color: var(--color-warning-dark);
+}
+
+.badge-error {
+  background: var(--color-error-light);
+  color: var(--color-error-dark);
+}
+
+.badge-gradient {
+  background: var(--gradient-ocean);
+  color: var(--color-white);
+}
+
+/* Numbered Badge for Steps */
+.badge-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--font-extrabold);
+  background: var(--gradient-ocean);
+  color: var(--color-white);
+  box-shadow: 0 4px 16px var(--shadow-colored-primary);
+}
+
+/* ============================================
+   OVERLAYS
+   ============================================ */
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 24px;
+}
+
+.overlay-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.6) 100%
+  );
+  border-radius: 24px;
+}
+
+.overlay-blur {
+  position: absolute;
+  inset: 0;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 24px;
+}
+
+/* ============================================
+   DIVIDER
+   ============================================ */
+
+.divider {
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-neutral-300),
+    transparent
+  );
+  margin: 24px 0;
+}
+
+.divider-colored {
+  height: 3px;
+  background: var(--gradient-ocean);
+  border-radius: 9999px;
+  margin: 24px 0;
+}
+
+/* ============================================
+   CONTAINER - TikTok Safe Zones
+   ============================================ */
+
+.safe-container {
+  position: relative;
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 120px 80px; /* Safe zone padding for TikTok UI */
+}
+
+/* TikTok UI safe zones */
+.safe-top {
+  padding-top: 120px; /* Status bar, profile */
+}
+
+.safe-bottom {
+  padding-bottom: 140px; /* Caption, buttons */
+}
+
+.safe-left {
+  padding-left: 80px; /* Like, comment icons */
+}
+
+.safe-right {
+  padding-right: 80px; /* Share, sound */
+}
+
+/* ============================================
+   PROGRESS BAR
+   ============================================ */
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--color-neutral-200);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--gradient-ocean);
+  border-radius: 9999px;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================
+   ICON BUTTON
+   ============================================ */
+
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.icon-btn:hover {
+  background: var(--color-white);
+  transform: scale(1.1);
+}
+
+/* ============================================
+   CONTENT BOX
+   ============================================ */
+
+.content-box {
+  background: var(--color-white);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 4px 20px var(--shadow-md);
+}
+
+.content-box-dark {
+  background: var(--color-neutral-900);
+  color: var(--color-white);
+}
+
+.content-box-glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 24px;
+}
+
+/* ============================================
+   HIGHLIGHT BOX
+   ============================================ */
+
+.highlight-box {
+  position: relative;
+  padding: 24px;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.highlight-box::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--gradient-ocean);
+  opacity: 0.1;
+  border-radius: 16px;
+}
+
+.highlight-box-content {
+  position: relative;
+  z-index: 1;
+}

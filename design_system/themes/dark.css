@@ -1,0 +1,104 @@
+/**
+ * Dark Theme - Canva Style for TikTok
+ * Sleek, modern, high contrast for mobile viewing
+ */
+
+:root {
+  /* Background Colors */
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-tertiary: #334155;
+  --bg-gradient: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+
+  /* Text Colors */
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-tertiary: #64748b;
+  --text-inverse: #0f172a;
+
+  /* Border Colors */
+  --border-light: #334155;
+  --border-medium: #475569;
+  --border-dark: #64748b;
+
+  /* Card Backgrounds */
+  --card-bg: #1e293b;
+  --card-bg-alt: #334155;
+
+  /* Glass Effect */
+  --glass-bg: rgba(30, 41, 59, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.1);
+
+  /* Shadows */
+  --shadow-color: rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px var(--shadow-color);
+  --shadow-md: 0 4px 6px var(--shadow-color);
+  --shadow-lg: 0 10px 15px var(--shadow-color);
+  --shadow-xl: 0 20px 25px var(--shadow-color);
+
+  /* Gradient Overlay for Dark Theme */
+  --gradient-overlay: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.9) 0%,
+    rgba(30, 41, 59, 0.8) 100%
+  );
+
+  /* Enhanced Gradients for Dark Mode */
+  --gradient-glow-primary: linear-gradient(
+    135deg,
+    rgba(14, 165, 233, 0.4) 0%,
+    rgba(139, 92, 246, 0.4) 100%
+  );
+  --gradient-glow-secondary: linear-gradient(
+    135deg,
+    rgba(236, 72, 153, 0.3) 0%,
+    rgba(168, 85, 247, 0.3) 100%
+  );
+}
+
+/* Dark Theme Body */
+.theme-dark {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.theme-dark .card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-light);
+  box-shadow: 0 8px 32px var(--shadow-lg);
+}
+
+.theme-dark .card-glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+}
+
+.theme-dark .text-muted {
+  color: var(--text-secondary);
+}
+
+.theme-dark .divider {
+  background: var(--border-medium);
+}
+
+.theme-dark .btn-outline {
+  border-color: var(--text-primary);
+}
+
+/* Dark theme specific adjustments */
+.theme-dark .badge-primary {
+  background: rgba(14, 165, 233, 0.2);
+  color: #7dd3fc;
+}
+
+.theme-dark .badge-secondary {
+  background: rgba(236, 72, 153, 0.2);
+  color: #f9a8d4;
+}
+
+.theme-dark .highlight-box::before {
+  background: var(--gradient-glow-primary);
+  opacity: 0.2;
+}

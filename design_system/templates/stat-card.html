@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Statistics Card - Design System</title>
+  <link rel="stylesheet" href="../colors.css">
+  <link rel="stylesheet" href="../typography.css">
+  <link rel="stylesheet" href="../components.css">
+  <link rel="stylesheet" href="../animations.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-primary);
+      background: #0f172a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 40px;
+    }
+
+    .tiktok-frame {
+      width: 1080px;
+      height: 1920px;
+      position: relative;
+      overflow: hidden;
+      border-radius: 24px;
+      background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .stat-container {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 120px 80px 140px;
+    }
+
+    .stat-header {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+
+    .stat-label {
+      font-size: var(--text-lg);
+      font-weight: var(--font-semibold);
+      color: var(--color-neutral-600);
+      text-transform: uppercase;
+      letter-spacing: var(--tracking-wider);
+      margin-bottom: 12px;
+    }
+
+    .stat-title {
+      font-family: var(--font-display);
+      font-size: var(--text-3xl);
+      font-weight: var(--font-extrabold);
+      background: var(--gradient-ocean);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 32px;
+      width: 100%;
+      max-width: 800px;
+    }
+
+    .stat-card {
+      background: var(--color-white);
+      border-radius: 24px;
+      padding: 40px 32px;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-8px);
+    }
+
+    .stat-card.highlighted {
+      background: var(--gradient-ocean);
+      grid-column: span 2;
+    }
+
+    .stat-card.highlighted .stat-number,
+    .stat-card.highlighted .stat-value {
+      color: var(--color-white);
+    }
+
+    .stat-card.highlighted .stat-label {
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .stat-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 20px;
+      background: var(--gradient-ocean);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+    }
+
+    .stat-card.highlighted .stat-icon {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .stat-number {
+      font-family: var(--font-display);
+      font-size: var(--text-5xl);
+      font-weight: var(--font-extrabold);
+      color: var(--color-neutral-900);
+      line-height: 1;
+      margin-bottom: 12px;
+    }
+
+    .stat-value {
+      font-size: var(--text-xl);
+      font-weight: var(--font-semibold);
+      color: var(--color-neutral-700);
+    }
+
+    .stat-change {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 12px;
+      border-radius: 9999px;
+      font-size: var(--text-sm);
+      font-weight: var(--font-semibold);
+      margin-top: 12px;
+    }
+
+    .stat-change.positive {
+      background: var(--color-success-light);
+      color: var(--color-success-dark);
+    }
+
+    .stat-change.negative {
+      background: var(--color-error-light);
+      color: var(--color-error-dark);
+    }
+
+    /* Decorative Elements */
+    .bg-decoration {
+      position: absolute;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(14, 165, 233, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+    }
+
+    .bg-decoration-1 {
+      width: 400px;
+      height: 400px;
+      top: -100px;
+      right: -100px;
+    }
+
+    .bg-decoration-2 {
+      width: 300px;
+      height: 300px;
+      bottom: 100px;
+      left: -100px;
+    }
+
+    /* Animations */
+    .stat-card {
+      animation: scaleIn 0.5s var(--ease-bounce-out) forwards;
+      opacity: 0;
+    }
+
+    .stat-card:nth-child(1) { animation-delay: 0.1s; }
+    .stat-card:nth-child(2) { animation-delay: 0.2s; }
+    .stat-card:nth-child(3) { animation-delay: 0.3s; }
+    .stat-card:nth-child(4) { animation-delay: 0.4s; }
+  </style>
+</head>
+<body>
+  <div class="tiktok-frame">
+    <!-- Background Decorations -->
+    <div class="bg-decoration bg-decoration-1"></div>
+    <div class="bg-decoration bg-decoration-2"></div>
+
+    <div class="stat-container">
+      <div class="stat-header">
+        <p class="stat-label">Performance Metrics</p>
+        <h1 class="stat-title">Monthly Results</h1>
+      </div>
+
+      <div class="stat-grid">
+        <!-- Highlighted Main Stat -->
+        <div class="stat-card highlighted">
+          <div class="stat-icon">🎯</div>
+          <div class="stat-number">2.5M</div>
+          <div class="stat-value">Total Views</div>
+          <div class="stat-change positive">
+            <span>↑</span>
+            <span>+127%</span>
+          </div>
+        </div>
+
+        <!-- Stat 2 -->
+        <div class="stat-card">
+          <div class="stat-icon">❤️</div>
+          <div class="stat-number">185K</div>
+          <div class="stat-value">Likes</div>
+          <div class="stat-change positive">
+            <span>↑</span>
+            <span>+89%</span>
+          </div>
+        </div>
+
+        <!-- Stat 3 -->
+        <div class="stat-card">
+          <div class="stat-icon">💬</div>
+          <div class="stat-number">12.4K</div>
+          <div class="stat-value">Comments</div>
+          <div class="stat-change positive">
+            <span>↑</span>
+            <span>+45%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

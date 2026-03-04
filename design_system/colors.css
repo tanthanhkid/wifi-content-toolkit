@@ -1,0 +1,110 @@
+/**
+ * Design System Colors - Canva Style for TikTok
+ * Vibrant, modern, high-contrast palette optimized for mobile viewing
+ */
+
+:root {
+  /* Primary Brand Colors - Vibrant & Eye-catching */
+  --color-primary-50: #f0f9ff;
+  --color-primary-100: #e0f2fe;
+  --color-primary-200: #bae6fd;
+  --color-primary-300: #7dd3fc;
+  --color-primary-400: #38bdf8;
+  --color-primary-500: #0ea5e9;
+  --color-primary-600: #0284c7;
+  --color-primary-700: #0369a1;
+  --color-primary-800: #07598b;
+  --color-primary-900: #0c4a6e;
+
+  /* Secondary - Pink/Purple Gradient */
+  --color-secondary-50: #fdf2f8;
+  --color-secondary-100: #fce7f3;
+  --color-secondary-200: #fbcfe8;
+  --color-secondary-300: #f9a8d4;
+  --color-secondary-400: #f472b6;
+  --color-secondary-500: #ec4899;
+  --color-secondary-600: #db2777;
+  --color-secondary-700: #be185d;
+  --color-secondary-800: #9d174d;
+  --color-secondary-900: #831843;
+
+  /* Accent - Orange/Coral */
+  --color-accent-50: #fff7ed;
+  --color-accent-100: #ffedd5;
+  --color-accent-200: #fed7aa;
+  --color-accent-300: #fdba74;
+  --color-accent-400: #fb923c;
+  --color-accent-500: #f97316;
+  --color-accent-600: #ea580c;
+  --color-accent-700: #c2410c;
+  --color-accent-800: #9a3412;
+  --color-accent-900: #7c2d12;
+
+  /* Success - Fresh Green */
+  --color-success: #10b981;
+  --color-success-light: #d1fae5;
+  --color-success-dark: #047857;
+
+  /* Warning - Amber */
+  --color-warning: #f59e0b;
+  --color-warning-light: #fef3c7;
+  --color-warning-dark: #b45309;
+
+  /* Error - Red */
+  --color-error: #ef4444;
+  --color-error-light: #fee2e2;
+  --color-error-dark: #b91c1c;
+
+  /* Neutrals */
+  --color-neutral-50: #fafafa;
+  --color-neutral-100: #f4f4f5;
+  --color-neutral-200: #e4e4e7;
+  --color-neutral-300: #d4d4d8;
+  --color-neutral-400: #a1a1aa;
+  --color-neutral-500: #71717a;
+  --color-neutral-600: #52525b;
+  --color-neutral-700: #3f3f46;
+  --color-neutral-800: #27272a;
+  --color-neutral-900: #18181b;
+  --color-neutral-950: #09090b;
+
+  /* Pure Colors */
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  /* Gradient Presets - Canva Style */
+  --gradient-sunset: linear-gradient(135deg, #f97316 0%, #ec4899 100%);
+  --gradient-ocean: linear-gradient(135deg, #0ea5e9 0%, #8b5cf6 100%);
+  --gradient-forest: linear-gradient(135deg, #10b981 0%, #0ea5e9 100%);
+  --gradient-berry: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+  --gradient-fire: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+  --gradient-mint: linear-gradient(135deg, #10b981 0%, #14b8a6 100%);
+  --gradient-lavender: linear-gradient(135deg, #c084fc 0%, #e879f9 100%);
+  --gradient-peach: linear-gradient(135deg, #fdba74 0%, #fb923c 100%);
+
+  /* Pastel Accents */
+  --pastel-pink: #fbcfe8;
+  --pastel-blue: #bae6fd;
+  --pastel-purple: #ddd6fe;
+  --pastel-green: #bbf7d0;
+  --pastel-yellow: #fef08a;
+  --pastel-orange: #fed7aa;
+
+  /* TikTok Safe Zone Colors */
+  --safe-zone-overlay: rgba(0, 0, 0, 0.3);
+  --safe-zone-border: rgba(255, 255, 255, 0.2);
+
+  /* Shadow Colors */
+  --shadow-sm: rgba(0, 0, 0, 0.05);
+  --shadow-md: rgba(0, 0, 0, 0.1);
+  --shadow-lg: rgba(0, 0, 0, 0.15);
+  --shadow-xl: rgba(0, 0, 0, 0.2);
+  --shadow-colored-primary: rgba(14, 165, 233, 0.3);
+  --shadow-colored-secondary: rgba(236, 72, 153, 0.3);
+
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.1);
+  --glass-bg-light: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-blur: blur(10px);
+}

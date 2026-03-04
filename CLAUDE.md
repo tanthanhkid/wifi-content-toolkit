@@ -231,13 +231,26 @@ For slides that embed local images (app screenshots, product photos):
 
 ### Quy tắc Voiceover (BẮT BUỘC)
 
-- **BẮT BUỘC:** Mọi video PHẢI có voiceover ElevenLabs TTS. KHÔNG BAO GIỜ giao video mà không có voiceover.
+- **BẮT BUỘC:** Mọi video PHẢI có voiceover TTS. KHÔNG BAO GIỜ giao video mà không có voiceover.
 - **Tiếng Việt có dấu:** Tất cả văn bản narration PHẢI viết tiếng Việt có dấu đầy đủ (ví dụ: "Một trăm mười tỉ đô la", KHÔNG ĐƯỢC viết "Mot tram muoi ti do la"). Điều này đảm bảo phát âm chính xác.
-- **Dùng `"preset"`** để điều chỉnh giọng đọc (ví dụ: `"energetic"`, `"warm"`, `"dramatic"`)
 - **10-25 từ mỗi slide** — phải vừa trong 4-6 giây
 - **Viết để nói, không phải để đọc** — ngắn gọn, mạnh mẽ, giọng hội thoại tự nhiên
 - **Dùng `...` để tạo ngắt, `!` để nhấn mạnh**
+
+#### TTS Engine: VieNeu-TTS (ưu tiên cho tiếng Việt)
+
+- **Package:** `vieneu` (NOT `vieneu-tts`). Venv riêng: `tiktok_brain-cells-llm/vieneu_venv/`
+- **Voice mặc định:** `Doan` (nữ miền Nam) — LUÔN dùng voice này trừ khi user yêu cầu khác
+- **6 voices:** Binh (nam Bắc), Tuyen (nam Bắc), Vinh (nam Nam), **Doan (nữ Nam)**, Ly (nữ Bắc), Ngoc (nữ Bắc)
+- **API:** `tts = Vieneu()` → `voice_data = tts.get_preset_voice("Doan")` → `audio = tts.infer(text, voice=voice_data)` → `tts.save(audio, "output.wav")`
+- **Output:** WAV 24kHz mono → convert MP3: `ffmpeg -y -i input.wav -codec:a libmp3lame -b:a 192k output.mp3`
+- **QUAN TRỌNG:** Chạy VieNeu-TTS bằng venv riêng (`tiktok_brain-cells-llm/vieneu_venv/bin/python`), KHÔNG dùng `.venv/`
+
+#### TTS Engine: ElevenLabs (đa ngôn ngữ)
+
+- **Dùng `"preset"`** để điều chỉnh giọng đọc (ví dụ: `"energetic"`, `"warm"`, `"dramatic"`)
 - Model: `eleven_v3` (hỗ trợ tiếng Việt + 30 ngôn ngữ)
+- Dùng qua MCP tool `generate_slide_narrations`
 
 ### Audio Mixing (Background Music is MANDATORY)
 
@@ -310,6 +323,30 @@ body { font-family: 'Be Vietnam Pro', sans-serif; }
 ```
 
 KHÔNG BAO GIỜ dùng `font-family: Arial` hoặc `sans-serif` cho slide tiếng Việt.
+
+### Tiếng Việt Có Dấu Trong HTML (BẮT BUỘC)
+
+**MỌI text tiếng Việt trong HTML slide PHẢI có dấu đầy đủ.** Không chỉ narration, mà tất cả text hiển thị trên slide (headings, labels, badges, buttons, captions) đều phải viết đúng chính tả tiếng Việt.
+
+| SAI (không dấu) | ĐÚNG (có dấu) |
+|------------------|----------------|
+| `THU PHAM` | `THỦ PHẠM` |
+| `gom het chip nho` | `gom hết chip nhớ` |
+| `Ban nghi sao?` | `Bạn nghĩ sao?` |
+| `Follow de cap nhat!` | `Follow để cập nhật!` |
+| `Doanh so smartphone toan cau` | `Doanh số smartphone toàn cầu` |
+
+**Kiểm tra trước khi render:** Đọc lại TOÀN BỘ HTML content, tìm text tiếng Việt không dấu → sửa trước khi chạy Playwright.
+
+### X.com Scraping (Firecrawl bị chặn)
+
+X.com/Twitter chặn Firecrawl hoàn toàn. Dùng các phương pháp sau:
+
+1. **vxtwitter API (ưu tiên):** `api.vxtwitter.com` — replace `x.com` bằng `api.vxtwitter.com` trong URL → trả về JSON (text, media_urls, likes, retweets). Không cần login.
+2. **Playwright headless:** Bundled Chromium (`headless=True`), `wait_until='load'` + `wait_for_timeout(8000)`. Có thể bị login wall.
+3. **oEmbed API:** `https://publish.twitter.com/oembed?url={url}` — chỉ trả embed HTML, hạn chế.
+
+**Caption credit:** Format `Credit: @username` — KHÔNG ghi link X.com hoặc "trên X.com".
 
 ### Key Rules
 
